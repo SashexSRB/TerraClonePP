@@ -94,13 +94,19 @@ public:
 
   // Testing Vertex
   const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f,        0.0f}},        // Top-left
-    {{0.5f, -0.5f},  0.0f, {1.0f, 1.0f, 1.0f}, {0.03125f,    0.0f}},        // Top-right
-    {{0.5f, 0.5f},   0.0f, {1.0f, 1.0f, 1.0f}, {0.03125f,    0.03125f}},    // Bottom-right
-    {{-0.5f, 0.5f},  0.0f, {1.0f, 1.0f, 1.0f}, {0.0f,        0.03125f}}     // Bottom-left
+      {{-0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0625f, 0.0f}}, // Top-left
+      {{0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.09375f, 0.0f}}, // Top-right
+      {{0.5f, 0.5f},
+       0.0f,
+       {1.0f, 1.0f, 1.0f},
+       {0.09375f, 0.03125f}}, // Bottom-right
+      {{-0.5f, 0.5f},
+       0.0f,
+       {1.0f, 1.0f, 1.0f},
+       {0.0625f, 0.03125f}} // Bottom-left
   };
 
-  const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+  const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
 
   // Vulkan Datatype Variables
   VkInstance instance;

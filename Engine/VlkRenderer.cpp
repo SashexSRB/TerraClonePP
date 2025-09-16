@@ -582,18 +582,20 @@ void VlkRenderer::createUniformBuffers() {
 void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
   // Identity model matrix with proper scale
   UniformBufferObject ubo{};
-  
+
   float w = static_cast<float>(swapChainExtent.width);
   float h = static_cast<float>(swapChainExtent.height);
-  
+
   // Create projection matrix for 2D rendering
-  ubo.proj = glm::ortho(0.0f, w, 0.0f, h, -1.0f, 1.0f);  // Note: swapped bottom/top
-  
+  ubo.proj =
+      glm::ortho(0.0f, w, 0.0f, h, -1.0f, 1.0f); // Note: swapped bottom/top
+
   // Identity view matrix
   ubo.view = glm::mat4(1.0f);
-  
+
   // Scale and translate model
-  ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(w/2.0f, h/2.0f, 0.0f));
+  ubo.model =
+      glm::translate(glm::mat4(1.0f), glm::vec3(w / 2.0f, h / 2.0f, 0.0f));
   ubo.model = glm::scale(ubo.model, glm::vec3(200.0f, 200.0f, 1.0f));
 
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
@@ -1016,14 +1018,16 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
   VkDeviceSize offsets[] = {0};
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-  vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+  vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           pipelineLayout, 0, 1, &descriptorSets[currentFrame],
                           0, nullptr);
 
-  std::cout << "Recording command buffer with " << indices.size() << " indices" << std::endl;
-  std::cout << "Viewport: " << swapChainExtent.width << "x" << swapChainExtent.height << std::endl;
+  std::cout << "Recording command buffer with " << indices.size() << " indices"
+            << std::endl;
+  std::cout << "Viewport: " << swapChainExtent.width << "x"
+            << swapChainExtent.height << std::endl;
 
   vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0,
                    0, 0);
