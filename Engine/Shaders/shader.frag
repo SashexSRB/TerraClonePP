@@ -12,6 +12,6 @@ void main() {
   if (texColor.a < 0.1) {
     outColor = vec4(fragColor, 1.0);
   } else {
-    outColor = texColor * vec4(fragColor, 1.0);
+    outColor = texColor;
   }
 }

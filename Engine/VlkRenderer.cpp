@@ -580,28 +580,21 @@ void VlkRenderer::createUniformBuffers() {
 }
 
 void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
-  static auto startTime = std::chrono::high_resolution_clock::now();
-
-  auto currentTime = std::chrono::high_resolution_clock::now();
-  float time = std::chrono::duration<float, std::chrono::seconds::period>(
-                   currentTime - startTime)
-                   .count();
-
+  // Identity model matrix with proper scale
   UniformBufferObject ubo{};
-
-  float quadSize = 16.0f;
-  ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
-              glm::scale(glm::mat4(1.0f), glm::vec3(quadSize, quadSize, 1.0f));
-
-  float cameraX = 0.0f, cameraY = 0.0f;
-  ubo.view =
-      glm::translate(glm::mat4(1.0f),
-                     glm::vec3(-cameraX + swapChainExtent.width / 2.0f,
-                               -cameraY + swapChainExtent.height / 2.0f, 0.0f));
-
-  ubo.proj =
-      glm::ortho(0.0f, static_cast<float>(swapChainExtent.width),
-                 static_cast<float>(swapChainExtent.height), 0.0f, -1.0f, 1.0f);
+  
+  float w = static_cast<float>(swapChainExtent.width);
+  float h = static_cast<float>(swapChainExtent.height);
+  
+  // Create projection matrix for 2D rendering
+  ubo.proj = glm::ortho(0.0f, w, 0.0f, h, -1.0f, 1.0f);  // Note: swapped bottom/top
+  
+  // Identity view matrix
+  ubo.view = glm::mat4(1.0f);
+  
+  // Scale and translate model
+  ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(w/2.0f, h/2.0f, 0.0f));
+  ubo.model = glm::scale(ubo.model, glm::vec3(200.0f, 200.0f, 1.0f));
 
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
@@ -733,7 +726,7 @@ void VlkRenderer::createGraphicsPipeline() {
   rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
   rasterizer.lineWidth = 1.0f;
   rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-  rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
   rasterizer.depthBiasEnable = VK_FALSE;
 
   VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -1028,6 +1021,9 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           pipelineLayout, 0, 1, &descriptorSets[currentFrame],
                           0, nullptr);
+
+  std::cout << "Recording command buffer with " << indices.size() << " indices" << std::endl;
+  std::cout << "Viewport: " << swapChainExtent.width << "x" << swapChainExtent.height << std::endl;
 
   vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0,
                    0, 0);
