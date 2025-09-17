@@ -23,6 +23,7 @@ public:
   // Variables
   uint32_t glfwExtensionCount = 0;
   uint32_t currentFrame = 0;
+  uint32_t indexCount;
 
   // Constants
   const char **glfwExtensions;
@@ -127,6 +128,9 @@ public:
   void createDescriptorSets();
   void createCommandBuffers();
   void updateUniformBuffer(uint32_t currentImage);
+  void updateVertexBuffer(const std::vector<Vertex> &vertices);
+  void updateIndexBuffer(const std::vector<uint32_t> &indices);
+
   void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void createSyncObjects();
   void cleanupSwapChain();

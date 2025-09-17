@@ -8,6 +8,7 @@
 #include <limits>
 #include <set>
 #include <stdexcept>
+#include <strings.h>
 #include <vulkan/vulkan_core.h>
 
 #include "stb_image.h"
@@ -585,7 +586,9 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
 
   float w = static_cast<float>(swapChainExtent.width);
   float h = static_cast<float>(swapChainExtent.height);
-
+  float worldWidth = 100.0f * 32.0f;
+  float worldHeight = 50.0f * 32.0f;
+  /*
   // Create projection matrix for 2D rendering
   ubo.proj =
       glm::ortho(0.0f, w, 0.0f, h, -1.0f, 1.0f); // Note: swapped bottom/top
@@ -597,8 +600,29 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
   ubo.model =
       glm::translate(glm::mat4(1.0f), glm::vec3(w / 2.0f, h / 2.0f, 0.0f));
   ubo.model = glm::scale(ubo.model, glm::vec3(200.0f, 200.0f, 1.0f));
+  */
+
+  // Manual orthographic projection: map (0, 3200, 0, 1600) to (-1, 1, 1, -1)
+  ubo.proj = glm::mat4(1.0f);
+  ubo.proj[0][0] = 2.0f / worldWidth;   // x scale: 2/3200 = 0.000625
+  ubo.proj[1][1] = -2.0f / worldHeight; // y scale: -2/1600 = -0.00125 (y-down)
+  ubo.proj[3][0] = -1.0f;               // x translation
+  ubo.proj[3][1] = 1.0f;                // y translation
+
+  ubo.view = glm::mat4(1.0f);
+  ubo.model = glm::mat4(1.0f);
 
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+
+  std::cout << "Projection matrix (world): \n"
+            << ubo.proj[0][0] << " " << ubo.proj[0][1] << " " << ubo.proj[0][2]
+            << " " << ubo.proj[0][3] << "\n"
+            << ubo.proj[1][0] << " " << ubo.proj[1][1] << " " << ubo.proj[1][2]
+            << " " << ubo.proj[1][3] << "\n"
+            << ubo.proj[2][0] << " " << ubo.proj[2][1] << " " << ubo.proj[2][2]
+            << " " << ubo.proj[2][3] << "\n"
+            << ubo.proj[3][0] << " " << ubo.proj[3][1] << " " << ubo.proj[3][2]
+            << " " << ubo.proj[3][3] << "\n";
 }
 
 void VlkRenderer::createDescriptorPool() {
@@ -727,7 +751,7 @@ void VlkRenderer::createGraphicsPipeline() {
   rasterizer.rasterizerDiscardEnable = VK_FALSE;
   rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
   rasterizer.lineWidth = 1.0f;
-  rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+  rasterizer.cullMode = VK_CULL_MODE_NONE;
   rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
   rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -954,6 +978,75 @@ void VlkRenderer::createIndexBuffer() {
   std::cout << "OK: Index Buffer created!\n";
 }
 
+void VlkRenderer::updateVertexBuffer(const std::vector<Vertex> &vertices) {
+  VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+
+  if (vertexBuffer != VK_NULL_HANDLE) {
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
+  }
+
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+
+  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+               stagingBuffer, stagingBufferMemory);
+
+  void *data;
+  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, vertices.data(), (size_t)bufferSize);
+  vkUnmapMemory(device, stagingBufferMemory);
+
+  createBuffer(
+      bufferSize,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+
+  copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+  vkDestroyBuffer(device, stagingBuffer, nullptr);
+  vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+  std::cout << "Vertex buffer updated with " << vertices.size() << "vertices\n";
+}
+
+void VlkRenderer::updateIndexBuffer(const std::vector<uint32_t> &indices) {
+  VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
+
+  if (indexBuffer != VK_NULL_HANDLE) {
+    vkDestroyBuffer(device, indexBuffer, nullptr);
+    vkFreeMemory(device, indexBufferMemory, nullptr);
+  }
+
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+
+  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+               stagingBuffer, stagingBufferMemory);
+
+  void *data;
+  vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, indices.data(), (size_t)bufferSize);
+  vkUnmapMemory(device, stagingBufferMemory);
+
+  createBuffer(
+      bufferSize,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+  copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+  vkDestroyBuffer(device, stagingBuffer, nullptr);
+  vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+  indexCount = indices.size();
+  std::cout << "Index buffer updated with: " << indices.size() << " indices\n";
+}
+
 void VlkRenderer::createCommandBuffers() {
   commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -1024,13 +1117,10 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
                           pipelineLayout, 0, 1, &descriptorSets[currentFrame],
                           0, nullptr);
 
-  std::cout << "Recording command buffer with " << indices.size() << " indices"
-            << std::endl;
-  std::cout << "Viewport: " << swapChainExtent.width << "x"
-            << swapChainExtent.height << std::endl;
+  std::cout << "Drawing world with " << indexCount << " indices\n";
 
-  vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0,
-                   0, 0);
+  vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indexCount), 1, 0, 0,
+                   0);
 
   vkCmdEndRenderPass(commandBuffer);
 

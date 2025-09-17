@@ -14,7 +14,7 @@ struct Tile {
 
 struct TileProperties {
   std::string name;
-  glm::vec2 texCoord;
+  glm::ivec2 texCoord;
   bool isSolid = true;
   float zValue = 0.5f;
 };

@@ -7,8 +7,6 @@ std::unordered_map<uint16_t, TileProperties> TileRegistry::tileTypes;
 std::unordered_map<uint16_t, TileProperties> TileRegistry::wallTypes;
 
 void TileRegistry::initialize() {
-  const float tileSize = 8.0f / 256.0f;
-
   static const std::vector<TileDefinition> tileDefs = {
       {0, "Air", 0, 0, false, 0.0f},
       {1, "Dirt", 1, 0, true, 0.5f},
@@ -22,16 +20,14 @@ void TileRegistry::initialize() {
   };
 
   for (const auto &def : tileDefs) {
-    tileTypes[def.id] = {def.name,
-                         {def.texX * tileSize, def.texY * tileSize},
-                         def.isSolid,
-                         def.zValue};
+    tileTypes[def.id] = {
+        def.name, {def.texX, def.texY}, def.isSolid, def.zValue};
   }
 
   for (const auto &def : wallDefs) {
     wallTypes[def.id] = {
         def.name,
-        {def.texX * tileSize, def.texY * tileSize},
+        {def.texX, def.texY},
         def.isSolid,
         def.zValue,
     };
@@ -70,61 +66,74 @@ void World::generateVertices(std::vector<Vertex> &vertices,
                              std::vector<uint32_t> &indices) {
   vertices.clear();
   indices.clear();
-  const float tileSize = 16.0f;            // Pixels per tile in world
-  const float texTileSize = 8.0f / 256.0f; // 8x8 tiles in atlas
-  const size_t maxVertices = 1000000;      // uint16_t limit
+  const float tileSize = 32.0f;       // Pixels per tile in world
+  const size_t maxVertices = 1000000; // Arbitrary limit for safety (uint32_t
+                                      // supports much more (4 billion))
   for (int x = 0; x < width; ++x) {
     for (int y = 0; y < height; y++) {
       const Tile &tile = tiles[x][y];
-      if (!tile.isActive && tile.wallId == 0)
+
+      if (!tile.isActive && tile.wallId == 0) // Skip empty tiles
         continue;
+
       if (vertices.size() >= maxVertices - 4)
-        throw std::runtime_error("Too many vertices for uint16_t indices");
+        throw std::runtime_error("Too many vertices for buffer");
+
+      // Generate wall vertices (background)
       if (tile.wallId != 0) {
         const TileProperties &props = TileRegistry::wallTypes[tile.wallId];
+        auto texCoords =
+            getTexCoords(static_cast<int>(props.texCoord.x),
+                         static_cast<int>(props.texCoord.y), 256, 8);
         uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+
         vertices.push_back({{x * tileSize, y * tileSize},
                             props.zValue,
                             {1.0f, 1.0f, 1.0f},
-                            props.texCoord + glm::vec2(0.0f, texTileSize)});
-        vertices.push_back(
-            {{(x + 1) * tileSize, y * tileSize},
-             props.zValue,
-             {1.0f, 1.0f, 1.0f},
-             props.texCoord + glm::vec2(texTileSize, texTileSize)});
+                            texCoords[0]});
+        vertices.push_back({{(x + 1) * tileSize, y * tileSize},
+                            props.zValue,
+                            {1.0f, 1.0f, 1.0f},
+                            texCoords[1]});
         vertices.push_back({{(x + 1) * tileSize, (y + 1) * tileSize},
                             props.zValue,
                             {1.0f, 1.0f, 1.0f},
-                            props.texCoord + glm::vec2(texTileSize, 0.0f)});
+                            texCoords[2]});
         vertices.push_back({{x * tileSize, (y + 1) * tileSize},
                             props.zValue,
                             {1.0f, 1.0f, 1.0f},
-                            props.texCoord});
+                            texCoords[3]});
+
         indices.insert(indices.end(),
                        {baseIndex, baseIndex + 1, baseIndex + 2, baseIndex + 2,
                         baseIndex + 3, baseIndex});
       }
 
+      // Generate tile vertices (foreground)
       if (tile.isActive) {
         const TileProperties &props = TileRegistry::tileTypes[tile.tileId];
+        auto texCoords =
+            getTexCoords(static_cast<int>(props.texCoord.x),
+                         static_cast<int>(props.texCoord.y), 256, 8);
         uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+
         vertices.push_back({{x * tileSize, y * tileSize},
                             props.zValue,
                             {1.0f, 1.0f, 1.0f},
-                            props.texCoord + glm::vec2(0.0f, texTileSize)});
-        vertices.push_back(
-            {{(x + 1) * tileSize, y * tileSize},
-             props.zValue,
-             {1.0f, 1.0f, 1.0f},
-             props.texCoord + glm::vec2(texTileSize, texTileSize)});
+                            texCoords[0]});
+        vertices.push_back({{(x + 1) * tileSize, y * tileSize},
+                            props.zValue,
+                            {1.0f, 1.0f, 1.0f},
+                            texCoords[1]});
         vertices.push_back({{(x + 1) * tileSize, (y + 1) * tileSize},
                             props.zValue,
                             {1.0f, 1.0f, 1.0f},
-                            props.texCoord + glm::vec2(texTileSize, 0.0f)});
+                            texCoords[2]});
         vertices.push_back({{x * tileSize, (y + 1) * tileSize},
                             props.zValue,
                             {1.0f, 1.0f, 1.0f},
-                            props.texCoord});
+                            texCoords[3]});
+
         indices.insert(indices.end(),
                        {baseIndex, baseIndex + 1, baseIndex + 2, baseIndex + 2,
                         baseIndex + 3, baseIndex});

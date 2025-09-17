@@ -113,34 +113,13 @@ void Game::updateBuffers() {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
   if (worldChanged) {
-    world.generateVertices(worldVertices, worldIndices);
+    world.generateVertices(vertices, indices);
+    renderer.updateVertexBuffer(vertices);
+    renderer.updateIndexBuffer(indices);
     worldChanged = false;
-    std::cout << "World generated: " << worldVertices.size() << " vertices, "
-              << worldIndices.size() << " indices\n";
+    std::cout << "World updated: " << vertices.size() << " vertices, "
+              << indices.size() << " indices\n";
   }
-  vertices = worldVertices;
-  indices = worldIndices;
-  std::vector<Vertex> playerVertices;
-  std::vector<uint32_t> playerIndices;
-  generatePlayerVertices(player, playerVertices, playerIndices);
-  std::vector<Vertex> uiVertices;
-  std::vector<uint32_t> uiIndices;
-  generateInventoryVertices(player.inventory, renderer.swapChainExtent.width,
-                            renderer.swapChainExtent.height, uiVertices,
-                            uiIndices);
-  uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
-  vertices.insert(vertices.end(), playerVertices.begin(), playerVertices.end());
-  for (uint32_t idx : playerIndices)
-    indices.push_back(baseIndex + idx);
-  baseIndex = static_cast<uint32_t>(vertices.size());
-  vertices.insert(vertices.end(), uiVertices.begin(), uiVertices.end());
-  for (uint32_t idx : uiIndices)
-    indices.push_back(baseIndex + idx);
-  std::cout << "Total: " << vertices.size() << " vertices, " << indices.size()
-            << " indices\n";
 
-  // TODO:
-  // renderer.updateVertexBuffer(vertices);
-  // renderer.updateIndexBuffer(indices);
   renderer.updateUniformBuffer(0);
 }

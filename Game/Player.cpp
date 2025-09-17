@@ -33,27 +33,25 @@ void generateInventoryVertices(const Inventory &inventory, float screenWidth,
   vertices.clear();
   indices.clear();
   const float slotSize = 40.0f; // UI slot size
-  const float texTileSize = 8.0f / 256.0f;
+
   float y = screenHeight - slotSize; // Bottom of screen
   for (size_t i = 0; i < inventory.items.size() && i < 10; ++i) {
     float x = i * slotSize;
     uint32_t tileId = inventory.items[i].first;
     const TileProperties &props = TileRegistry::tileTypes[tileId];
+    auto texCoords = getTexCoords(props.texCoord.x, props.texCoord.y, 256, 8);
     uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
-    vertices.push_back({{x, y},
-                        0.0f,
-                        {1.0f, 1.0f, 1.0f},
-                        props.texCoord + glm::vec2(0.0f, texTileSize)});
-    vertices.push_back({{x + slotSize, y},
-                        0.0f,
-                        {1.0f, 1.0f, 1.0f},
-                        props.texCoord + glm::vec2(texTileSize, texTileSize)});
-    vertices.push_back({{x + slotSize, y + slotSize},
-                        0.0f,
-                        {1.0f, 1.0f, 1.0f},
-                        props.texCoord + glm::vec2(texTileSize, 0.0f)});
+
+    // Create quad vertices (top-left, top-right, bottom-right, bottom-left)
+    vertices.push_back({{x, y}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[0]});
     vertices.push_back(
-        {{x, y + slotSize}, 0.0f, {1.0f, 1.0f, 1.0f}, props.texCoord});
+        {{x + slotSize, y}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[1]});
+    vertices.push_back(
+        {{x + slotSize, y + slotSize}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[2]});
+    vertices.push_back(
+        {{x, y + slotSize}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[3]});
+
+    // Two triangles: (0,1,2) and (2,3,0)
     indices.insert(indices.end(), {baseIndex, baseIndex + 1, baseIndex + 2,
                                    baseIndex + 2, baseIndex + 3, baseIndex});
   }
