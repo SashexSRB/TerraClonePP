@@ -11,6 +11,8 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
+#include "Vertex.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 
 #define GLFW_INCLUDE_VULKAN
@@ -49,61 +51,14 @@ public:
     alignas(16) glm::mat4 proj;
   };
 
-  struct Vertex {
-    glm::vec2 pos;
-    float z;
-    glm::vec3 color;
-    glm::vec2 texCoord;
-
-    static VkVertexInputBindingDescription getBindingDescription() {
-      VkVertexInputBindingDescription bindingDescription{};
-      bindingDescription.binding = 0;
-      bindingDescription.stride = sizeof(Vertex);
-      bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-      return bindingDescription;
-    }
-
-    static std::array<VkVertexInputAttributeDescription, 4>
-    getAttributeDescriptions() {
-      std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
-
-      attributeDescriptions[0].binding = 0;
-      attributeDescriptions[0].location = 0;
-      attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-      attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-      attributeDescriptions[1].binding = 0;
-      attributeDescriptions[1].location = 1;
-      attributeDescriptions[1].format = VK_FORMAT_R32_SFLOAT;
-      attributeDescriptions[1].offset = offsetof(Vertex, z);
-
-      attributeDescriptions[2].binding = 0;
-      attributeDescriptions[2].location = 2;
-      attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-      attributeDescriptions[2].offset = offsetof(Vertex, color);
-
-      attributeDescriptions[3].binding = 0;
-      attributeDescriptions[3].location = 3;
-      attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
-      attributeDescriptions[3].offset = offsetof(Vertex, texCoord);
-
-      return attributeDescriptions;
-    }
-  };
+  std::array<glm::vec2, 4> texCoords = getTexCoords(2, 0, 256, 8);
 
   // Testing Vertex
   const std::vector<Vertex> vertices = {
-      {{-0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0625f, 0.0f}}, // Top-left
-      {{0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.09375f, 0.0f}}, // Top-right
-      {{0.5f, 0.5f},
-       0.0f,
-       {1.0f, 1.0f, 1.0f},
-       {0.09375f, 0.03125f}}, // Bottom-right
-      {{-0.5f, 0.5f},
-       0.0f,
-       {1.0f, 1.0f, 1.0f},
-       {0.0625f, 0.03125f}} // Bottom-left
+      {{-0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[0]}, // Top-left
+      {{0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[1]},  // Top-right
+      {{0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[2]},   // Bottom-right
+      {{-0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[3]},  // Bottom-left
   };
 
   const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};

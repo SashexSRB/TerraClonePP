@@ -46,3 +46,6 @@ struct Vertex {
     return attributeDescriptions;
   }
 };
+
+std::array<glm::vec2, 4> getTexCoords(int x, int y, int atlasSize,
+                                      int tileSize);
