@@ -5,8 +5,8 @@ OK: Physical Device Selected.
 OK: Logical device created.
 OK: Swapchain created!
 OK: Image views created!
-OK: Render Pass created!
-OK: Descriptor Set Layout created!
+OK: Render Pass reated
+K: Descriptor Set Layout created!
 OK: Graphics Pipeline created!
 OK: Command Pool created!
 Depth format: 126

@@ -31,7 +31,7 @@ private:
   VlkRenderer vlkRenderer;
   VlkValidator validator;
   Game *game;
-  static const uint32_t WIDTH = 800;
-  static const uint32_t HEIGHT = 600;
+  static const uint32_t WIDTH = 1600;
+  static const uint32_t HEIGHT = 800;
   static const int MAX_FRAMES_IN_FLIGHT = 2;
 };

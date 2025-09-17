@@ -52,9 +52,9 @@ public:
     alignas(16) glm::mat4 proj;
   };
 
-  std::array<glm::vec2, 4> texCoords = getTexCoords(2, 0, 256, 8);
+  std::array<glm::vec2, 4> texCoords = getTexCoords(3, 0, 256, 8);
 
-  // Testing Vertex
+  // Initial Vertex
   const std::vector<Vertex> vertices = {
       {{-0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[0]}, // Top-left
       {{0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[1]},  // Top-right
@@ -62,6 +62,7 @@ public:
       {{-0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[3]},  // Bottom-left
   };
 
+  // Initial Indices
   const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
 
   // Vulkan Datatype Variables

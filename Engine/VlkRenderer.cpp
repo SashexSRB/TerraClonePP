@@ -604,16 +604,16 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
 
   // Manual orthographic projection: map (0, 3200, 0, 1600) to (-1, 1, 1, -1)
   ubo.proj = glm::mat4(1.0f);
-  ubo.proj[0][0] = 2.0f / worldWidth;   // x scale: 2/3200 = 0.000625
-  ubo.proj[1][1] = -2.0f / worldHeight; // y scale: -2/1600 = -0.00125 (y-down)
-  ubo.proj[3][0] = -1.0f;               // x translation
-  ubo.proj[3][1] = 1.0f;                // y translation
+  ubo.proj[0][0] = 2.0f / worldWidth;  // x scale: 2/3200 = 0.000625
+  ubo.proj[1][1] = 2.0f / worldHeight; // y scale: -2/1600 = -0.00125 (y-down)
+  ubo.proj[3][0] = -1.0f;              // x translation
+  ubo.proj[3][1] = -1.0f;              // y translation
 
   ubo.view = glm::mat4(1.0f);
   ubo.model = glm::mat4(1.0f);
 
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-
+  /*
   std::cout << "Projection matrix (world): \n"
             << ubo.proj[0][0] << " " << ubo.proj[0][1] << " " << ubo.proj[0][2]
             << " " << ubo.proj[0][3] << "\n"
@@ -623,6 +623,7 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
             << " " << ubo.proj[2][3] << "\n"
             << ubo.proj[3][0] << " " << ubo.proj[3][1] << " " << ubo.proj[3][2]
             << " " << ubo.proj[3][3] << "\n";
+  */
 }
 
 void VlkRenderer::createDescriptorPool() {
@@ -1009,7 +1010,8 @@ void VlkRenderer::updateVertexBuffer(const std::vector<Vertex> &vertices) {
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-  std::cout << "Vertex buffer updated with " << vertices.size() << "vertices\n";
+  std::cout << "Vertex buffer updated with " << vertices.size()
+            << " vertices\n";
 }
 
 void VlkRenderer::updateIndexBuffer(const std::vector<uint32_t> &indices) {
@@ -1117,7 +1119,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
                           pipelineLayout, 0, 1, &descriptorSets[currentFrame],
                           0, nullptr);
 
-  std::cout << "Drawing world with " << indexCount << " indices\n";
+  // std::cout << "Drawing world with " << indexCount << " indices\n";
 
   vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indexCount), 1, 0, 0,
                    0);

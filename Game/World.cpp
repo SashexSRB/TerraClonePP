@@ -141,5 +141,5 @@ void World::generateVertices(std::vector<Vertex> &vertices,
     }
   }
   std::cout << "World generated: " << vertices.size() << " vertices, "
-            << indices.size() << " indics.\n";
+            << indices.size() << " indices.\n";
 }
