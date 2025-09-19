@@ -119,13 +119,23 @@ void Game::updateBuffers() {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
   if (worldChanged) {
-    world.generateVertices(vertices, indices);
-    renderer.updateVertexBuffer(vertices);
-    renderer.updateIndexBuffer(indices);
+    world.generateVertices(worldVertices, worldIndices);
+    renderer.updateVertexBuffer("world", worldVertices);
+    renderer.updateIndexBuffer("world", worldIndices);
     worldChanged = false;
-    std::cout << "World updated: " << vertices.size() << " vertices, "
-              << indices.size() << " indices\n";
+    std::cout << "World updated: " << worldVertices.size() << " vertices, "
+              << worldIndices.size() << " indices\n";
   }
+
+  // generatePlayerVertices(player, playerVertices, playerIndices);
+  // renderer.updateVertexBuffer("player", playerVertices);
+  // renderer.updateIndexBuffer("player", playerIndices);
+
+  // generateInventoryVertices(player.inventory, renderer.swapChainExtent.width,
+  //                         renderer.swapChainExtent.height, inventoryVertices,
+  //                         inventoryIndices);
+  // renderer.updateVertexBuffer("inventory", inventoryVertices);
+  // renderer.updateIndexBuffer("inventory", inventoryIndices);
 
   renderer.updateUniformBuffer(0);
 }

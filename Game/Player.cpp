@@ -5,7 +5,7 @@ void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices,
   vertices.clear();
   indices.clear();
   const float size = 32.0f; // Player sprite size
-  float z = 0.2f;           // Player in front of tiles
+  float z = 0.5f;           // Player in front of tiles
   const float texTileSize = 8.0f / 256.0f;
   vertices.push_back({{player.position.x, player.position.y},
                       z,
@@ -43,13 +43,13 @@ void generateInventoryVertices(const Inventory &inventory, float screenWidth,
     uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
 
     // Create quad vertices (top-left, top-right, bottom-right, bottom-left)
-    vertices.push_back({{x, y}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[0]});
+    vertices.push_back({{x, y}, 0.9f, {1.0f, 1.0f, 1.0f}, texCoords[0]});
     vertices.push_back(
-        {{x + slotSize, y}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[1]});
+        {{x + slotSize, y}, 0.9f, {1.0f, 1.0f, 1.0f}, texCoords[1]});
     vertices.push_back(
-        {{x + slotSize, y + slotSize}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[2]});
+        {{x + slotSize, y + slotSize}, 0.9f, {1.0f, 1.0f, 1.0f}, texCoords[2]});
     vertices.push_back(
-        {{x, y + slotSize}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[3]});
+        {{x, y + slotSize}, 0.9f, {1.0f, 1.0f, 1.0f}, texCoords[3]});
 
     // Two triangles: (0,1,2) and (2,3,0)
     indices.insert(indices.end(), {baseIndex, baseIndex + 1, baseIndex + 2,

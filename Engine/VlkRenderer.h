@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
@@ -52,6 +53,14 @@ public:
     alignas(16) glm::mat4 proj;
   };
 
+  struct MeshBuffer {
+    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+    VkBuffer indexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory indexMemory = VK_NULL_HANDLE;
+    uint32_t indexCount = 0;
+  };
+
   std::array<glm::vec2, 4> texCoords = getTexCoords(3, 0, 256, 8);
 
   // Initial Vertex
@@ -64,6 +73,7 @@ public:
 
   // Initial Indices
   const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
+  std::unordered_map<std::string, MeshBuffer> meshes;
 
   // Vulkan Datatype Variables
   VkInstance instance;
@@ -129,8 +139,11 @@ public:
   void createDescriptorSets();
   void createCommandBuffers();
   void updateUniformBuffer(uint32_t currentImage);
-  void updateVertexBuffer(const std::vector<Vertex> &vertices);
-  void updateIndexBuffer(const std::vector<uint32_t> &indices);
+  void updateVertexBuffer(const std::string &name,
+                          const std::vector<Vertex> &vertices);
+  void updateIndexBuffer(const std::string &name,
+                         const std::vector<uint32_t> &indices);
+  void draw(const std::string &name, VkCommandBuffer commandBuffer);
 
   void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void createSyncObjects();

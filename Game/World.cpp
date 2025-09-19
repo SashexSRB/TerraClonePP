@@ -11,9 +11,9 @@ std::unordered_map<uint16_t, TileProperties> TileRegistry::wallTypes;
 void TileRegistry::initialize() {
   static const std::vector<TileDefinition> tileDefs = {
       {0, "Air", 0, 0, false, 0.0f},
-      {1, "Dirt", 1, 0, true, 0.5f},
-      {2, "Stone", 2, 0, true, 0.5f},
-      {3, "Grass", 3, 0, true, 0.5f},
+      {1, "Dirt", 1, 0, true, 0.2f},
+      {2, "Stone", 2, 0, true, 0.2f},
+      {3, "Grass", 3, 0, true, 0.2f},
   };
 
   static const std::vector<TileDefinition> wallDefs = {

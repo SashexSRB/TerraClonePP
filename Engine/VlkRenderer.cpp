@@ -979,12 +979,15 @@ void VlkRenderer::createIndexBuffer() {
   std::cout << "OK: Index Buffer created!\n";
 }
 
-void VlkRenderer::updateVertexBuffer(const std::vector<Vertex> &vertices) {
+void VlkRenderer::updateVertexBuffer(const std::string &name,
+                                     const std::vector<Vertex> &vertices) {
   VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
 
-  if (vertexBuffer != VK_NULL_HANDLE) {
-    vkDestroyBuffer(device, vertexBuffer, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
+  MeshBuffer &mesh = meshes[name];
+
+  if (mesh.vertexBuffer != VK_NULL_HANDLE) {
+    vkDestroyBuffer(device, mesh.vertexBuffer, nullptr);
+    vkFreeMemory(device, mesh.vertexMemory, nullptr);
   }
 
   VkBuffer stagingBuffer;
@@ -1000,12 +1003,13 @@ void VlkRenderer::updateVertexBuffer(const std::vector<Vertex> &vertices) {
   memcpy(data, vertices.data(), (size_t)bufferSize);
   vkUnmapMemory(device, stagingBufferMemory);
 
-  createBuffer(
-      bufferSize,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+  createBuffer(bufferSize,
+               VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mesh.vertexBuffer,
+               mesh.vertexMemory);
 
-  copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+  copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize);
 
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -1014,12 +1018,15 @@ void VlkRenderer::updateVertexBuffer(const std::vector<Vertex> &vertices) {
             << " vertices\n";
 }
 
-void VlkRenderer::updateIndexBuffer(const std::vector<uint32_t> &indices) {
+void VlkRenderer::updateIndexBuffer(const std::string &name,
+                                    const std::vector<uint32_t> &indices) {
   VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
 
-  if (indexBuffer != VK_NULL_HANDLE) {
-    vkDestroyBuffer(device, indexBuffer, nullptr);
-    vkFreeMemory(device, indexBufferMemory, nullptr);
+  MeshBuffer &mesh = meshes[name];
+
+  if (mesh.indexBuffer != VK_NULL_HANDLE) {
+    vkDestroyBuffer(device, mesh.indexBuffer, nullptr);
+    vkFreeMemory(device, mesh.indexMemory, nullptr);
   }
 
   VkBuffer stagingBuffer;
@@ -1038,15 +1045,32 @@ void VlkRenderer::updateIndexBuffer(const std::vector<uint32_t> &indices) {
   createBuffer(
       bufferSize,
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mesh.indexBuffer, mesh.indexMemory);
 
-  copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+  copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize);
 
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-  indexCount = indices.size();
+  mesh.indexCount = indices.size();
   std::cout << "Index buffer updated with: " << indices.size() << " indices\n";
+}
+
+void VlkRenderer::draw(const std::string &name, VkCommandBuffer commandBuffer) {
+  auto it = meshes.find(name);
+  if (it == meshes.end())
+    throw std::runtime_error("Mesh '" + name + "' not found!");
+
+  MeshBuffer &mesh = it->second;
+  if (mesh.indexCount == 0)
+    throw std::runtime_error("Mesh '" + name + "'  buffers not initialized!");
+
+  VkBuffer vertexBuffers[] = {mesh.vertexBuffer};
+  VkDeviceSize offsets[] = {0};
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+  vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0,
+                       VK_INDEX_TYPE_UINT32);
+  vkCmdDrawIndexed(commandBuffer, mesh.indexCount, 1, 0, 0, 0);
 }
 
 void VlkRenderer::createCommandBuffers() {
@@ -1109,20 +1133,13 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
   scissor.extent = swapChainExtent;
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  VkBuffer vertexBuffers[] = {vertexBuffer};
-  VkDeviceSize offsets[] = {0};
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-  vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           pipelineLayout, 0, 1, &descriptorSets[currentFrame],
                           0, nullptr);
 
-  // std::cout << "Drawing world with " << indexCount << " indices\n";
-
-  vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indexCount), 1, 0, 0,
-                   0);
+  draw("world", commandBuffer);
+  // draw("player", commandBuffer);
+  //  draw("inventory", commandBuffer);
 
   vkCmdEndRenderPass(commandBuffer);
 

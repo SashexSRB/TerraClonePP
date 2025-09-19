@@ -18,9 +18,17 @@ private:
   GLFWwindow *window;
   World world;
   Player player;
+  bool worldChanged = true;
+
   std::vector<Vertex> worldVertices;
   std::vector<uint32_t> worldIndices;
-  bool worldChanged = true;
+
+  std::vector<Vertex> playerVertices;
+  std::vector<uint32_t> playerIndices;
+
+  std::vector<Vertex> inventoryVertices;
+  std::vector<uint32_t> inventoryIndices;
+
   void update(float deltaTime);
   void handleInput();
   void updateBuffers();
