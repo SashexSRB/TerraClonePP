@@ -50,7 +50,7 @@ void Game::update(float deltaTime) {
   player.position += player.velocity * deltaTime;
 
   // Basic collision (ground at y=25 * 16)
-  float groundY = world.getHeight() / 2 * 16.0f;
+  float groundY = static_cast<float>(world.getHeight()) / 2 * 16.0f;
   if (player.position.y > groundY) {
     player.position.y = groundY;
     player.velocity.y = 0.0f;
