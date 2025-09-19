@@ -1014,8 +1014,8 @@ void VlkRenderer::updateVertexBuffer(const std::string &name,
   vkDestroyBuffer(device, stagingBuffer, nullptr);
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-  std::cout << "Vertex buffer updated with " << vertices.size()
-            << " vertices\n";
+  // std::cout << "Vertex buffer updated with " << vertices.size()
+  //          << " vertices\n";
 }
 
 void VlkRenderer::updateIndexBuffer(const std::string &name,
@@ -1053,7 +1053,8 @@ void VlkRenderer::updateIndexBuffer(const std::string &name,
   vkFreeMemory(device, stagingBufferMemory, nullptr);
 
   mesh.indexCount = indices.size();
-  std::cout << "Index buffer updated with: " << indices.size() << " indices\n";
+  // std::cout << "Index buffer updated with: " << indices.size() << "
+  // indices\n";
 }
 
 void VlkRenderer::draw(const std::string &name, VkCommandBuffer commandBuffer) {

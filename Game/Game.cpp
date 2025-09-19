@@ -3,7 +3,7 @@
 #include "../VulkanApp.h"
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
-#include <iostream>
+// #include <iostream>
 
 VulkanApp app;
 
@@ -123,8 +123,8 @@ void Game::updateBuffers() {
     renderer.updateVertexBuffer("world", worldVertices);
     renderer.updateIndexBuffer("world", worldIndices);
     worldChanged = false;
-    std::cout << "World updated: " << worldVertices.size() << " vertices, "
-              << worldIndices.size() << " indices\n";
+    // std::cout << "World updated: " << worldVertices.size() << " vertices, "
+    //          << worldIndices.size() << " indices\n";
   }
 
   // generatePlayerVertices(player, playerVertices, playerIndices);

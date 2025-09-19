@@ -177,6 +177,6 @@ void World::generateVertices(std::vector<Vertex> &vertices,
       }
     }
   }
-  std::cout << "World generated: " << vertices.size() << " vertices, "
+  std::cout << "Tiles generated: " << vertices.size() << " vertices, "
             << indices.size() << " indices.\n";
 }
