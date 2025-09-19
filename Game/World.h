@@ -44,7 +44,7 @@ public:
   Tile &getTile(int x, int y);
   int getWidth() const { return width; }
   int getHeight() const { return height; }
-  void generate();
+  void generate(unsigned int seed);
   void generateVertices(std::vector<Vertex> &vertices,
                         std::vector<uint32_t> &indices);
 };

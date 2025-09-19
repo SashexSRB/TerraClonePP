@@ -1,5 +1,7 @@
 #include "World.h"
+#include <cmath>
 #include <iostream>
+#include <random>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -40,24 +42,44 @@ World::World(int w, int h) : width(w), height(h) {
 
 Tile &World::getTile(int x, int y) { return tiles[x][y]; }
 
-void World::generate() {
+void World::generate(unsigned int seed) {
+  std::mt19937 rng(seed);
+  std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+  float frequency = 0.05f; // smoothness of terrain
+  float amplitude = 10.0f; // height variation
+  int groundLevel = height / 2;
+
+  // Generate terrain height for each column
+  std::vector<int> surfaceHeight(width);
   for (int x = 0; x < width; ++x) {
+    // Simple noise using sine + rng offset
+    float noise = std::sin(x * frequency) + dist(rng) * 0.5f;
+    int terrainHeight = groundLevel + static_cast<int>(noise * amplitude);
+
+    surfaceHeight[x] = terrainHeight;
+  }
+
+  // Assign tiles based on terrain height
+  for (int x = 0; x < width; ++x) {
+    int terrainHeight = surfaceHeight[x];
     for (int y = 0; y < height; ++y) {
       Tile &tile = tiles[x][y];
-      if (y < height / 2) {
+
+      if (y < terrainHeight) {
         tile.tileId = 0;
         tile.isActive = false;
-      } else if (y == height / 2) {
+      } else if (y == terrainHeight) {
         tile.tileId = 3;
         tile.isActive = true;
-      } else if (y < height / 2 + 5) {
+      } else if (y < terrainHeight + 5) {
         tile.tileId = 1;
         tile.isActive = true;
       } else {
         tile.tileId = 2;
         tile.isActive = true;
       }
-      tile.wallId = (y > height / 2) ? 1 : 0;
+      tile.wallId = (y > terrainHeight) ? 1 : 0;
     }
   }
 }

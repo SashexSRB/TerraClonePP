@@ -1,6 +1,7 @@
 // Game/Game.cpp
 #include "Game.h"
 #include "../VulkanApp.h"
+#include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
@@ -10,7 +11,12 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
     : renderer(renderer), window(window), world(100, 50), player(),
       worldChanged(true) {
   player.position = {50.0 * 16.0, 24.0 * 16.0};
-  world.generate();
+
+  // Generate a random seed using system clock
+  unsigned int seed = static_cast<unsigned int>(
+      std::chrono::system_clock::now().time_since_epoch().count());
+
+  world.generate(seed);
   updateBuffers();
 }
 
