@@ -1,7 +1,7 @@
 #include "World.h"
+#include "PerlinNoise.hpp"
 #include <cmath>
 #include <iostream>
-#include <random>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -43,8 +43,7 @@ World::World(int w, int h) : width(w), height(h) {
 Tile &World::getTile(int x, int y) { return tiles[x][y]; }
 
 void World::generate(unsigned int seed) {
-  std::mt19937 rng(seed);
-  std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+  siv::PerlinNoise perlin(seed);
 
   float frequency = 0.05f; // smoothness of terrain
   float amplitude = 10.0f; // height variation
@@ -52,17 +51,19 @@ void World::generate(unsigned int seed) {
 
   // Generate terrain height for each column
   std::vector<int> surfaceHeight(width);
+
   for (int x = 0; x < width; ++x) {
     // Simple noise using sine + rng offset
-    float noise = std::sin(x * frequency) + dist(rng) * 0.5f;
-    int terrainHeight = groundLevel + static_cast<int>(noise * amplitude);
+    double noise = perlin.octave2D_01(x * frequency, 0.0, 4) * 2.0 - 1.0;
 
+    int terrainHeight = groundLevel + static_cast<int>(noise * amplitude);
     surfaceHeight[x] = terrainHeight;
   }
 
   // Assign tiles based on terrain height
   for (int x = 0; x < width; ++x) {
     int terrainHeight = surfaceHeight[x];
+
     for (int y = 0; y < height; ++y) {
       Tile &tile = tiles[x][y];
 
@@ -81,6 +82,20 @@ void World::generate(unsigned int seed) {
       }
       tile.wallId = (y > terrainHeight) ? 1 : 0;
     }
+
+    // carve caves underground
+    /*
+    for (int y = terrainHeight + 20; y < height; ++y) { // start deeper
+      double caveNoise = perlin.octave2D_01(
+          x * 0.08, y * 0.03, 3); // adjust frequency and octaves if needed
+
+      if (caveNoise > 0.65) { // thresold controls cave density
+        Tile &tile = tiles[x][y];
+        tile.tileId = 0;
+        tile.isActive = false;
+      }
+    }
+    */
   }
 }
 
