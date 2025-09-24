@@ -1139,7 +1139,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
                           0, nullptr);
 
   draw("world", commandBuffer);
-  // draw("player", commandBuffer);
+  draw("player", commandBuffer);
   //  draw("inventory", commandBuffer);
 
   vkCmdEndRenderPass(commandBuffer);
