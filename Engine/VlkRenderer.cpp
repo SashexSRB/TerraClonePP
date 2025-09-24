@@ -1,4 +1,5 @@
 #include "VlkRenderer.h"
+#include "../Game/Game.h"
 #include "VlkValidator.h"
 
 #include <GLFW/glfw3.h>
@@ -581,26 +582,37 @@ void VlkRenderer::createUniformBuffers() {
 }
 
 void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
+  if (!game) {
+    UniformBufferObject ubo{};
+    ubo.proj = glm::mat4(1.0f);
+    ubo.proj[0][0] = 2.0f / (100.0f * 32.0f);
+    ubo.proj[1][1] = 2.0f / (50.0f * 32.0f);
+    ubo.proj[3][0] = -1.0f;
+    ubo.proj[3][1] = -1.0f;
+    ubo.view = glm::mat4(1.0f);
+    ubo.model = glm::mat4(1.0f);
+    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+    return;
+  }
   // Identity model matrix with proper scale
   UniformBufferObject ubo{};
 
-  float w = static_cast<float>(swapChainExtent.width);
-  float h = static_cast<float>(swapChainExtent.height);
+  // World dimensions in pixels (100x50 tiles at 32x32px);
+  float screenWidth = static_cast<float>(swapChainExtent.width);
+  float screenHeight = static_cast<float>(swapChainExtent.height);
   float worldWidth = 100.0f * 32.0f;
   float worldHeight = 50.0f * 32.0f;
-  /*
-  // Create projection matrix for 2D rendering
-  ubo.proj =
-      glm::ortho(0.0f, w, 0.0f, h, -1.0f, 1.0f); // Note: swapped bottom/top
 
-  // Identity view matrix
-  ubo.view = glm::mat4(1.0f);
+  // Camera follows player (player.position must be accessible)
+  glm::vec2 cameraPos = game->player.position;
 
-  // Scale and translate model
-  ubo.model =
-      glm::translate(glm::mat4(1.0f), glm::vec3(w / 2.0f, h / 2.0f, 0.0f));
-  ubo.model = glm::scale(ubo.model, glm::vec3(200.0f, 200.0f, 1.0f));
-  */
+  // Clamp camera to prevent showing outside world bounds
+  cameraPos.x =
+      std::max(screenWidth / 2.0f,
+               std::min(cameraPos.x, worldWidth - screenWidth / 2.0f));
+  cameraPos.y =
+      std::max(screenHeight / 2.0f,
+               std::min(cameraPos.y, worldHeight - screenHeight / 2.0f));
 
   // Manual orthographic projection: map (0, 3200, 0, 1600) to (-1, 1, 1, -1)
   ubo.proj = glm::mat4(1.0f);
@@ -609,21 +621,12 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
   ubo.proj[3][0] = -1.0f;              // x translation
   ubo.proj[3][1] = -1.0f;              // y translation
 
-  ubo.view = glm::mat4(1.0f);
+  ubo.view = glm::translate(
+      glm::mat4(1.0f),
+      glm::vec3(-cameraPos.x + screenWidth, -cameraPos.y + screenHeight, 0.0f));
   ubo.model = glm::mat4(1.0f);
 
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-  /*
-  std::cout << "Projection matrix (world): \n"
-            << ubo.proj[0][0] << " " << ubo.proj[0][1] << " " << ubo.proj[0][2]
-            << " " << ubo.proj[0][3] << "\n"
-            << ubo.proj[1][0] << " " << ubo.proj[1][1] << " " << ubo.proj[1][2]
-            << " " << ubo.proj[1][3] << "\n"
-            << ubo.proj[2][0] << " " << ubo.proj[2][1] << " " << ubo.proj[2][2]
-            << " " << ubo.proj[2][3] << "\n"
-            << ubo.proj[3][0] << " " << ubo.proj[3][1] << " " << ubo.proj[3][2]
-            << " " << ubo.proj[3][3] << "\n";
-  */
 }
 
 void VlkRenderer::createDescriptorPool() {

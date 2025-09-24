@@ -19,6 +19,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+class Game;
+
 class VlkRenderer {
 public:
   // Variables
@@ -74,6 +76,10 @@ public:
   // Initial Indices
   const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
   std::unordered_map<std::string, MeshBuffer> meshes;
+
+  Game *game = nullptr;
+
+  void setGame(Game &g) { game = &g; }
 
   // Vulkan Datatype Variables
   VkInstance instance;

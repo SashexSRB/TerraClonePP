@@ -10,7 +10,9 @@ VulkanApp app;
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
     : renderer(renderer), window(window), world(100, 50), player(),
       worldChanged(true) {
-  player.position = {50.0 * 16.0, 24.0 * 16.0};
+  player.position = {(world.getWidth() * 32.0f) / 2.0f - 16.0f,
+                     (world.getHeight() * 32.0f / 2.0f - 16.0f)};
+  renderer.setGame(*this);
 
   // Generate a random seed using system clock
   unsigned int seed = static_cast<unsigned int>(
@@ -52,10 +54,10 @@ void Game::update(float deltaTime) {
   glm::vec2 newPosition = player.position + player.velocity * deltaTime;
 
   // Convert player position to tile coordinates
-  int playerTileX = static_cast<int>(player.position.x / 16.0f);
-  int playerTileY = static_cast<int>(player.position.y / 16.0f);
-  int newTileX = static_cast<int>(newPosition.x / 16.0f);
-  int newTileY = static_cast<int>(newPosition.y / 16.0f);
+  int playerTileX = static_cast<int>(player.position.x / 32.0f);
+  int playerTileY = static_cast<int>(player.position.y / 32.0f);
+  int newTileX = static_cast<int>(newPosition.x / 32.0f);
+  int newTileY = static_cast<int>(newPosition.y / 32.0f);
 
   // Clamp tile coordinates to world bounds
   playerTileX = std::max(0, std::min(playerTileX, world.getWidth() - 1));
@@ -78,7 +80,7 @@ void Game::update(float deltaTime) {
     // Check tile below the proposed position
     if (newTileY < world.getHeight() && isTileSolid(newTileX, newTileY)) {
       // Snap player to the top of tile;
-      player.position.y = newTileY * 16.0f;
+      player.position.y = newTileY * 32.0f;
       player.velocity.y = 0.0f;
       player.isGrounded = true;
     } else {
@@ -91,7 +93,7 @@ void Game::update(float deltaTime) {
     int aboveTileY = newTileY - 1;
     if (aboveTileY >= 0 && isTileSolid(newTileX, aboveTileY)) {
       // Snap player to the bottom of the tile;
-      player.position.y = (aboveTileY + 1) * 16.0f;
+      player.position.y = (aboveTileY + 1) * 32.0f;
       player.velocity.y = 0.0f;
     } else {
       // No collision, allow movement
@@ -111,7 +113,7 @@ void Game::update(float deltaTime) {
     if (isTileSolid(targetTileX, playerTileY)) {
       // Snap player to the edge of tile
       player.position.x =
-          (player.velocity.x > 0.0f ? targetTileX : targetTileX + 1) * 16.0f;
+          (player.velocity.x > 0.0f ? targetTileX : targetTileX + 1) * 32.0f;
       player.velocity.x = 0.0f;
     } else {
       // No collision, allow movement
@@ -121,9 +123,9 @@ void Game::update(float deltaTime) {
 
   // Clamp player position to world bounds
   player.position.x = std::max(
-      0.0f, std::min(player.position.x, world.getWidth() * 16.0f - 1.0f));
+      0.0f, std::min(player.position.x, world.getWidth() * 32.0f - 1.0f));
   player.position.y = std::max(
-      0.0f, std::min(player.position.y, world.getHeight() * 16.0f - 1.0f));
+      0.0f, std::min(player.position.y, world.getHeight() * 32.0f - 1.0f));
 
   /*
   player.position += player.velocity * deltaTime;
@@ -156,10 +158,10 @@ void Game::handleInput() {
     glfwGetCursorPos(window, &xpos, &ypos);
     int tileX = static_cast<int>(
         (xpos + player.position.x - renderer.swapChainExtent.width / 2.0f) /
-        16.0f);
+        32.0f);
     int tileY = static_cast<int>(
         (ypos + player.position.y - renderer.swapChainExtent.height / 2.0f) /
-        16.0f);
+        32.0f);
     if (tileX >= 0 && tileX < world.getWidth() && tileY >= 0 &&
         tileY < world.getHeight()) {
       Tile &tile = world.getTile(tileX, tileY);
@@ -175,10 +177,10 @@ void Game::handleInput() {
     glfwGetCursorPos(window, &xpos, &ypos);
     int tileX = static_cast<int>(
         (xpos + player.position.x - renderer.swapChainExtent.width / 2.0f) /
-        16.0f);
+        32.0f);
     int tileY = static_cast<int>(
         (ypos + player.position.y - renderer.swapChainExtent.height / 2.0f) /
-        16.0f);
+        32.0f);
     if (tileX >= 0 && tileX < world.getWidth() && tileY >= 0 &&
         tileY < world.getHeight()) {
       Tile &tile = world.getTile(tileX, tileY);
