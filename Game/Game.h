@@ -11,13 +11,13 @@ public:
   Game(const Game &) = delete;
   Game &operator=(const Game &) = delete;
   Player player;
+  World world;
   void run();
   void notifyWorldChanged();
 
 private:
   VlkRenderer &renderer;
   GLFWwindow *window;
-  World world;
   bool worldChanged = true;
 
   std::vector<Vertex> worldVertices;

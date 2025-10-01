@@ -585,8 +585,8 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
   if (!game) {
     UniformBufferObject ubo{};
     ubo.proj = glm::mat4(1.0f);
-    ubo.proj[0][0] = 2.0f / (1000.0f * 32.0f);
-    ubo.proj[1][1] = 2.0f / (500.0f * 32.0f);
+    ubo.proj[0][0] = 2.0f / (game->world.getWidth() * 32.0f);
+    ubo.proj[1][1] = 2.0f / (game->world.getHeight() * 32.0f);
     ubo.proj[3][0] = -1.0f;
     ubo.proj[3][1] = -1.0f;
     ubo.view = glm::mat4(1.0f);
@@ -594,14 +594,15 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     return;
   }
+
   // Identity model matrix with proper scale
   UniformBufferObject ubo{};
 
   // World dimensions in pixels (100x50 tiles at 32x32px);
   float screenWidth = static_cast<float>(swapChainExtent.width);
   float screenHeight = static_cast<float>(swapChainExtent.height);
-  float worldWidth = 1000.0f * 32.0f;
-  float worldHeight = 500.0f * 32.0f;
+  float worldWidth = game->world.getWidth() * 32.0f;
+  float worldHeight = game->world.getHeight() * 32.0f;
 
   // Camera follows player (player.position must be accessible)
   glm::vec2 cameraPos = game->player.position;
@@ -617,7 +618,7 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
   // Manual orthographic projection: map (0, 3200, 0, 1600) to (-1, 1, 1, -1)
   ubo.proj = glm::mat4(1.0f);
   ubo.proj[0][0] = 2.0f / screenWidth;  // x scale: 2/3200 = 0.000625
-  ubo.proj[1][1] = 2.0f / screenHeight; // y scale: -2/1600 = -0.00125 (y-down)
+  ubo.proj[1][1] = 2.0f / screenHeight; // y scale: 2/1600 = 0.00125 (y-down)
   ubo.proj[3][0] = -1.0f;               // x translation
   ubo.proj[3][1] = -1.0f;               // y translation
 
