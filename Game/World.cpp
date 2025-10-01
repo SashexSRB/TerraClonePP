@@ -103,13 +103,11 @@ void World::generateVertices(std::vector<Vertex> &vertices,
                              std::vector<uint32_t> &indices) {
   vertices.clear();
   indices.clear();
-  const float tileSize = 32.0f;       // Pixels per tile in world
-  const size_t maxVertices = 1000000; // Arbitrary limit for safety (uint32_t
-                                      // supports much more (4 billion))
+  const float tileSize = 32.0f;          // Pixels per tile in world
+  const size_t maxVertices = 4294967295; // uint32_t limit for safety
   for (int x = 0; x < width; ++x) {
     for (int y = 0; y < height; y++) {
       const Tile &tile = tiles[x][y];
-
       if (!tile.isActive && tile.wallId == 0) // Skip empty tiles
         continue;
 

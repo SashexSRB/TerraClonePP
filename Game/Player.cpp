@@ -5,7 +5,7 @@ void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices,
   vertices.clear();
   indices.clear();
   const float size = 32.0f; // Player sprite size
-  float z = 0.5f;           // Player in front of tiles
+  float z = 0.1f;           // Player in front of tiles
   const float texTileSize = 8.0f / 256.0f;
   vertices.push_back({{player.position.x, player.position.y},
                       z,

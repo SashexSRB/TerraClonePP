@@ -8,10 +8,10 @@
 VulkanApp app;
 
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
-    : renderer(renderer), window(window), world(100, 50), player(),
+    : renderer(renderer), window(window), world(1000, 500), player(),
       worldChanged(true) {
-  player.position = {(world.getWidth() * 32.0f) / 2.0f - 16.0f,
-                     (world.getHeight() * 32.0f / 2.0f - 16.0f)};
+  player.position = {(world.getWidth() * 32.0f) / 2.0f - 32.0f,
+                     (world.getHeight() * 32.0f / 2.0f - 32.0f)};
   renderer.setGame(*this);
 
   // Generate a random seed using system clock
@@ -36,36 +36,35 @@ void Game::run() {
 }
 
 void Game::update(float deltaTime) {
-  // Player movement
+  const float playerSize = 32.0f;
+
+  // -----------------------------
+  // Handle horizontal input
+  // -----------------------------
+  player.velocity.x = 0.0f;
   if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
     player.velocity.x = -player.moveSpeed;
-  } else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-    player.velocity.x = player.moveSpeed;
-  } else {
-    player.velocity.x = 0.0f;
   }
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+    player.velocity.x = player.moveSpeed;
+  }
+
+  // -----------------------------
+  // Handle jump
+  // -----------------------------
   if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player.isGrounded) {
     player.velocity.y = -player.jumpSpeed;
     player.isGrounded = false;
   }
-  player.velocity.y += 800.0f * deltaTime; // Gravity
 
-  // Calculate proposed new position
-  glm::vec2 newPosition = player.position + player.velocity * deltaTime;
+  // -----------------------------
+  // Apply gravity
+  // -----------------------------
+  player.velocity.y += 800.0f * deltaTime;
 
-  // Convert player position to tile coordinates
-  int playerTileX = static_cast<int>(player.position.x / 32.0f);
-  int playerTileY = static_cast<int>(player.position.y / 32.0f);
-  int newTileX = static_cast<int>(newPosition.x / 32.0f);
-  int newTileY = static_cast<int>(newPosition.y / 32.0f);
-
-  // Clamp tile coordinates to world bounds
-  playerTileX = std::max(0, std::min(playerTileX, world.getWidth() - 1));
-  playerTileY = std::max(0, std::min(playerTileY, world.getHeight() - 1));
-  newTileX = std::max(0, std::min(newTileX, world.getWidth() - 1));
-  newTileY = std::max(0, std::min(newTileY, world.getHeight() - 1));
-
-  // Helper lambda to check if tile is solid (tile or wall);
+  // -----------------------------
+  // Helper lambda
+  // -----------------------------
   auto isTileSolid = [&](int x, int y) -> bool {
     if (x < 0 || x >= world.getWidth() || y < 0 || y >= world.getHeight()) {
       return true;
@@ -75,69 +74,126 @@ void Game::update(float deltaTime) {
            (tile.wallId != 0 && TileRegistry::wallTypes[tile.wallId].isSolid);
   };
 
-  // Vertical collision (falling or jumping)
-  if (player.velocity.y > 0.0f) { // Falling
-    // Check tile below the proposed position
-    if (newTileY < world.getHeight() && isTileSolid(newTileX, newTileY)) {
-      // Snap player to the top of tile;
-      player.position.y = newTileY * 32.0f;
+  // -----------------------------
+  // Horizontal collision
+  // -----------------------------
+  glm::vec2 newPos = player.position;
+  newPos.x += player.velocity.x * deltaTime;
+
+  int topTileY = static_cast<int>(player.position.y / playerSize);
+  int bottomTileY =
+      static_cast<int>((player.position.y + playerSize - 1) / playerSize);
+
+  if (player.velocity.x > 0.0f) { // moving right
+    int rightTileX = static_cast<int>((newPos.x + playerSize - 1) / playerSize);
+    bool collision = false;
+    for (int y = topTileY; y <= bottomTileY; ++y) {
+      if (isTileSolid(rightTileX, y)) {
+        collision = true;
+        break;
+      }
+    }
+    if (collision) {
+      newPos.x = rightTileX * playerSize - playerSize;
+      player.velocity.x = 0.0f;
+    }
+  } else if (player.velocity.x < 0.0f) { // moving left
+    int leftTileX = static_cast<int>(newPos.x / playerSize);
+    bool collision = false;
+    for (int y = topTileY; y <= bottomTileY; ++y) {
+      if (isTileSolid(leftTileX, y)) {
+        collision = true;
+        break;
+      }
+    }
+    if (collision) {
+      newPos.x = (leftTileX + 1) * playerSize;
+      player.velocity.x = 0.0f;
+    }
+  }
+  player.position.x = newPos.x;
+
+  // -----------------------------
+  // Ground check to prevent jitter
+  // -----------------------------
+  int leftTileX = static_cast<int>(player.position.x / playerSize);
+  int rightTileX =
+      static_cast<int>((player.position.x + playerSize - 1) / playerSize);
+
+  if (player.isGrounded && player.velocity.y >= 0.0f) {
+    // Check if still on solid ground (use current position, with epsilon)
+    float bottomY = player.position.y + playerSize +
+                    0.001; // Small epsilon for FP precision
+    int bottomTileY = static_cast<int>(bottomY / playerSize);
+    bool onGround = false;
+    for (int x = leftTileX; x <= rightTileX; ++x) {
+      if (isTileSolid(x, bottomTileY)) {
+        onGround = true;
+        break;
+      }
+    }
+    if (onGround) {
+      player.velocity.y = 0.0f;
+    } else {
+      player.isGrounded = false; // Ground disappeared, allow fall
+    }
+  }
+
+  // -----------------------------
+  // Vertical collision (stable)
+  // -----------------------------
+  newPos.y = player.position.y + player.velocity.y * deltaTime;
+
+  if (player.velocity.y > 0.0f) { // falling
+    int bottomTileY =
+        static_cast<int>((newPos.y + playerSize - 1) / playerSize);
+    bool collision = false;
+    for (int x = leftTileX; x <= rightTileX; ++x) {
+      if (isTileSolid(x, bottomTileY)) {
+        collision = true;
+        break;
+      }
+    }
+    if (collision) {
+      // Snap exactly on top of the tile
+      newPos.y = bottomTileY * playerSize - playerSize;
       player.velocity.y = 0.0f;
       player.isGrounded = true;
     } else {
-      // No collision, allow movement;
-      player.position.y = newPosition.y;
       player.isGrounded = false;
+      player.position.y = newPos.y;
     }
-  } else if (player.velocity.y < 0.0f) { // Jumping
-    // Check tile above the proposed position
-    int aboveTileY = newTileY - 1;
-    if (aboveTileY >= 0 && isTileSolid(newTileX, aboveTileY)) {
-      // Snap player to the bottom of the tile;
-      player.position.y = (aboveTileY + 1) * 32.0f;
+  } else if (player.velocity.y < 0.0f) { // jumping
+    int topTileYCheck = static_cast<int>(newPos.y / playerSize);
+    bool collision = false;
+    for (int x = leftTileX; x <= rightTileX; ++x) {
+      if (isTileSolid(x, topTileYCheck)) {
+        collision = true;
+        break;
+      }
+    }
+    if (collision) {
+      // Snap below the ceiling
+      newPos.y = (topTileYCheck + 1) * playerSize;
       player.velocity.y = 0.0f;
     } else {
-      // No collision, allow movement
-      player.position.y = newPosition.y;
+      player.position.y = newPos.y;
     }
   } else {
-    // Check if player is grounded (tile below is solid)
-    int belowTileY = playerTileY + 1;
-    player.isGrounded = (belowTileY < world.getHeight() &&
-                         isTileSolid(playerTileX, belowTileY));
+    // Do nothing if velocity.y == 0
+    // grounded state already handled during falling
   }
+  player.position.y = newPos.y;
 
-  // Horizontal collision (moving left or right)
-  if (player.velocity.x != 0.0f) {
-    // Check tile in direction of movement
-    int targetTileX = newTileX + (player.velocity.x > 0.0f ? 1 : -1);
-    if (isTileSolid(targetTileX, playerTileY)) {
-      // Snap player to the edge of tile
-      player.position.x =
-          (player.velocity.x > 0.0f ? targetTileX : targetTileX + 1) * 32.0f;
-      player.velocity.x = 0.0f;
-    } else {
-      // No collision, allow movement
-      player.position.x = newPosition.x;
-    }
-  }
-
-  // Clamp player position to world bounds
-  player.position.x = std::max(
-      0.0f, std::min(player.position.x, world.getWidth() * 32.0f - 1.0f));
-  player.position.y = std::max(
-      0.0f, std::min(player.position.y, world.getHeight() * 32.0f - 1.0f));
-
-  /*
-  player.position += player.velocity * deltaTime;
-
-  // Basic collision (ground at y=25 * 16)
-  float groundY = static_cast<float>(world.getHeight()) / 2 * 16.0f;
-  if (player.position.y > groundY) {
-    player.position.y = groundY;
-    player.velocity.y = 0.0f;
-    player.isGrounded = true;
-  }
-  */
+  // -----------------------------
+  // Clamp to world bounds
+  // -----------------------------
+  player.position.x =
+      std::max(0.0f, std::min(player.position.x,
+                              world.getWidth() * playerSize - playerSize));
+  player.position.y =
+      std::max(0.0f, std::min(player.position.y,
+                              world.getHeight() * playerSize - playerSize));
 }
 
 void Game::handleInput() {

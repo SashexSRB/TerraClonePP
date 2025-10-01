@@ -585,8 +585,8 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
   if (!game) {
     UniformBufferObject ubo{};
     ubo.proj = glm::mat4(1.0f);
-    ubo.proj[0][0] = 2.0f / (100.0f * 32.0f);
-    ubo.proj[1][1] = 2.0f / (50.0f * 32.0f);
+    ubo.proj[0][0] = 2.0f / (1000.0f * 32.0f);
+    ubo.proj[1][1] = 2.0f / (500.0f * 32.0f);
     ubo.proj[3][0] = -1.0f;
     ubo.proj[3][1] = -1.0f;
     ubo.view = glm::mat4(1.0f);
@@ -600,13 +600,13 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
   // World dimensions in pixels (100x50 tiles at 32x32px);
   float screenWidth = static_cast<float>(swapChainExtent.width);
   float screenHeight = static_cast<float>(swapChainExtent.height);
-  float worldWidth = 100.0f * 32.0f;
-  float worldHeight = 50.0f * 32.0f;
+  float worldWidth = 1000.0f * 32.0f;
+  float worldHeight = 500.0f * 32.0f;
 
   // Camera follows player (player.position must be accessible)
   glm::vec2 cameraPos = game->player.position;
 
-  // Clamp camera to prevent showing outside world bounds
+  // Clamp camera to world bounds
   cameraPos.x =
       std::max(screenWidth / 2.0f,
                std::min(cameraPos.x, worldWidth - screenWidth / 2.0f));
@@ -616,14 +616,14 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
 
   // Manual orthographic projection: map (0, 3200, 0, 1600) to (-1, 1, 1, -1)
   ubo.proj = glm::mat4(1.0f);
-  ubo.proj[0][0] = 2.0f / worldWidth;  // x scale: 2/3200 = 0.000625
-  ubo.proj[1][1] = 2.0f / worldHeight; // y scale: -2/1600 = -0.00125 (y-down)
-  ubo.proj[3][0] = -1.0f;              // x translation
-  ubo.proj[3][1] = -1.0f;              // y translation
+  ubo.proj[0][0] = 2.0f / screenWidth;  // x scale: 2/3200 = 0.000625
+  ubo.proj[1][1] = 2.0f / screenHeight; // y scale: -2/1600 = -0.00125 (y-down)
+  ubo.proj[3][0] = -1.0f;               // x translation
+  ubo.proj[3][1] = -1.0f;               // y translation
 
-  ubo.view = glm::translate(
-      glm::mat4(1.0f),
-      glm::vec3(-cameraPos.x + screenWidth, -cameraPos.y + screenHeight, 0.0f));
+  ubo.view = glm::translate(glm::mat4(1.0f),
+                            glm::vec3(-cameraPos.x + screenWidth / 2,
+                                      -cameraPos.y + screenHeight / 2, 0.0f));
   ubo.model = glm::mat4(1.0f);
 
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
