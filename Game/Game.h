@@ -5,6 +5,12 @@
 #include "World.h"
 #include <GLFW/glfw3.h>
 
+struct CameraParams {
+  glm::vec2 position;
+  float visibleWidth;
+  float visibleHeight;
+};
+
 class Game {
 public:
   Game(GLFWwindow *window, VlkRenderer &renderer);
@@ -28,6 +34,13 @@ private:
 
   std::vector<Vertex> inventoryVertices;
   std::vector<uint32_t> inventoryIndices;
+
+  CameraParams computeCameraParams(const Player &player, const World &world,
+                                   int windowWidth, int windowHeight,
+                                   float tileSize, float visibleTilesX);
+
+  glm::ivec2 screenToTile(double mouseX, double mouseY, const CameraParams &cam,
+                          int windowWidth, int windowHeight, float tileSize);
 
   void update(float deltaTime);
   void handleInput();

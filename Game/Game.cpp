@@ -1,6 +1,7 @@
 // Game/Game.cpp
 #include "Game.h"
 #include "../VulkanApp.h"
+#include <algorithm>
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
 // #include <iostream>
@@ -8,7 +9,7 @@
 VulkanApp app;
 
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
-    : renderer(renderer), window(window), world(1000, 500), player(),
+    : renderer(renderer), window(window), world(200, 100), player(),
       worldChanged(true) {
   player.position = {(world.getWidth() * 32.0f) / 2.0f - 32.0f,
                      (world.getHeight() * 32.0f / 2.0f - 32.0f)};
@@ -196,9 +197,57 @@ void Game::update(float deltaTime) {
                               world.getHeight() * playerSize - playerSize));
 }
 
+CameraParams Game::computeCameraParams(const Player &player, const World &world,
+                                       int windowWidth, int windowHeight,
+                                       float tileSize, float visibleTilesX) {
+  CameraParams cam;
+
+  cam.visibleWidth = visibleTilesX * tileSize;
+  cam.visibleHeight = cam.visibleWidth * windowHeight / windowWidth;
+
+  cam.position = player.position;
+
+  // Clamp camera to world bounds
+  float worldWidth = world.getWidth() * tileSize;
+  float worldHeight = world.getHeight() * tileSize;
+  cam.position.x =
+      std::max(cam.visibleWidth / 2.0f,
+               std::min(cam.position.x, worldWidth - cam.visibleHeight / 2.0f));
+  cam.position.y = std::max(
+      cam.visibleHeight / 2.0f,
+      std::min(cam.position.y, worldHeight - cam.visibleHeight / 2.0f));
+
+  return cam;
+}
+
+glm::ivec2 Game::screenToTile(double mouseX, double mouseY,
+                              const CameraParams &cam, int windowWidth,
+                              int windowHeight, float tileSize) {
+  // Convert screen pixels to NDC (-1..1)
+  float ndcX = static_cast<float>(mouseX) / windowWidth * 2.0f - 1.0f;
+  float ndcY = static_cast<float>(mouseY) / windowHeight * 2.0f - 1.0f;
+
+  // Map NDC to world coordinates
+  float worldX = cam.position.x - cam.visibleWidth / 2.0f +
+                 (ndcX + 1.0f) / 2.0f * cam.visibleWidth;
+  float worldY = cam.position.y - cam.visibleHeight / 2.0f +
+                 (ndcY + 1.0f) / 2.0f * cam.visibleHeight;
+
+  // World -> tile indices
+  int tileX = static_cast<int>(worldX / tileSize);
+  int tileY = static_cast<int>(worldY / tileSize);
+
+  // Clamp to world
+  tileX = std::clamp(tileX, 0, world.getWidth() - 1);
+  tileY = std::clamp(tileY, 0, world.getHeight() - 1);
+
+  return glm::ivec2(tileX, tileY);
+}
+
 void Game::handleInput() {
   float moveSpeed = player.moveSpeed;
   player.velocity.x = 0.0f;
+
   if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
     player.velocity.x = -moveSpeed;
   }
@@ -209,18 +258,23 @@ void Game::handleInput() {
     player.velocity.y = -player.jumpSpeed;
     player.isGrounded = false;
   }
+
+  CameraParams cam =
+      computeCameraParams(player, world, renderer.swapChainExtent.width,
+                          renderer.swapChainExtent.height, 32.0f, 100.0f);
+
+  double xpos, ypos;
+  glfwGetCursorPos(window, &xpos, &ypos);
+  glm::ivec2 tileCoords =
+      screenToTile(xpos, ypos, cam, renderer.swapChainExtent.width,
+                   renderer.swapChainExtent.height, 32.0f);
+
+  // Left click: remove tile
   if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-    int tileX = static_cast<int>(
-        (xpos + player.position.x - renderer.swapChainExtent.width / 2.0f) /
-        32.0f);
-    int tileY = static_cast<int>(
-        (ypos + player.position.y - renderer.swapChainExtent.height / 2.0f) /
-        32.0f);
-    if (tileX >= 0 && tileX < world.getWidth() && tileY >= 0 &&
-        tileY < world.getHeight()) {
-      Tile &tile = world.getTile(tileX, tileY);
+    if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
+        tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
+
+      Tile &tile = world.getTile(tileCoords.x, tileCoords.y);
       if (tile.isActive && TileRegistry::tileTypes[tile.tileId].isSolid) {
         player.inventory.addItem(tile.tileId, 1);
         tile.isActive = false;
@@ -228,25 +282,20 @@ void Game::handleInput() {
       }
     }
   }
+
+  // Right click: place tile
   if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-    int tileX = static_cast<int>(
-        (xpos + player.position.x - renderer.swapChainExtent.width / 2.0f) /
-        32.0f);
-    int tileY = static_cast<int>(
-        (ypos + player.position.y - renderer.swapChainExtent.height / 2.0f) /
-        32.0f);
-    if (tileX >= 0 && tileX < world.getWidth() && tileY >= 0 &&
-        tileY < world.getHeight()) {
-      Tile &tile = world.getTile(tileX, tileY);
+    if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
+        tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
+
+      Tile &tile = world.getTile(tileCoords.x, tileCoords.y);
       if (!tile.isActive && !player.inventory.items.empty()) {
         tile.tileId = player.inventory.items[0].first;
         tile.isActive = true;
         player.inventory.items[0].second--;
-        if (player.inventory.items[0].second <= 0) {
+        if (player.inventory.items[0].second <= 0)
           player.inventory.items.erase(player.inventory.items.begin());
-        }
+
         notifyWorldChanged();
       }
     }
@@ -269,7 +318,8 @@ void Game::updateBuffers() {
   renderer.updateVertexBuffer("player", playerVertices);
   renderer.updateIndexBuffer("player", playerIndices);
 
-  // generateInventoryVertices(player.inventory, renderer.swapChainExtent.width,
+  // generateInventoryVertices(player.inventory,
+  // renderer.swapChainExtent.width,
   //                          renderer.swapChainExtent.height,
   //                          inventoryVertices, inventoryIndices);
   //  renderer.updateVertexBuffer("inventory", inventoryVertices);
