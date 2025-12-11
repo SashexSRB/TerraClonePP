@@ -4,6 +4,9 @@
 #include "Player.h"
 #include "World.h"
 #include <GLFW/glfw3.h>
+#include <atomic>
+#include <mutex>
+#include <thread>
 
 struct CameraParams {
   glm::vec2 position;
@@ -16,6 +19,8 @@ public:
   Game(GLFWwindow *window, VlkRenderer &renderer);
   Game(const Game &) = delete;
   Game &operator=(const Game &) = delete;
+  ~Game();
+
   Player player;
   World world;
   void run();
@@ -35,6 +40,10 @@ private:
   std::vector<Vertex> inventoryVertices;
   std::vector<uint32_t> inventoryIndices;
 
+  std::atomic<bool> running{true};
+  std::thread physicsThread;
+  std::mutex worldMutex;
+
   CameraParams computeCameraParams(const Player &player, const World &world,
                                    int windowWidth, int windowHeight,
                                    float tileSize, float visibleTilesX);
@@ -45,4 +54,6 @@ private:
   void update(float deltaTime);
   void handleInput();
   void updateBuffers();
+
+  void gameLoopThread();
 };

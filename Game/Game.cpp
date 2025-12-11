@@ -21,19 +21,67 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
 
   world.generate(seed);
   updateBuffers();
+
+  std::cout << "[Game] Starting physics thread...\n";
+  physicsThread = std::thread(&Game::gameLoopThread, this);
+}
+
+Game::~Game() {
+  std::cout << "[Game] Stopping physics thread...\n";
+  running = false;
+  if (physicsThread.joinable())
+    physicsThread.join();
+  std::cout << "[Game] Physics thread stopped.\n";
+}
+
+void Game::gameLoopThread() {
+  std::cout << "[Game] Thread started.\n";
+  auto lastTime = std::chrono::high_resolution_clock::now();
+
+  while (running) {
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float deltaTime =
+        std::chrono::duration<float>(currentTime - lastTime).count();
+    lastTime = currentTime;
+
+    // lock the world while updating
+    {
+      std::lock_guard<std::mutex> lock(worldMutex);
+      update(deltaTime);
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }
+  std::cout << "[Game] Thread exiting.\n";
 }
 
 void Game::notifyWorldChanged() { worldChanged = true; }
 
 void Game::run() {
   static float lastTime = glfwGetTime();
-  float currentTime = glfwGetTime();
-  float deltaTime = currentTime - lastTime;
-  lastTime = currentTime;
-  update(deltaTime);
-  handleInput();
-  updateBuffers();
-  renderer.drawFrame(window, app.framebufferResized);
+
+  while (!glfwWindowShouldClose(window)) {
+    float currentTime = glfwGetTime();
+    float deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    handleInput();
+
+    {
+      std::lock_guard<std::mutex> lock(worldMutex);
+      updateBuffers();
+    }
+
+    renderer.drawFrame(window, app.framebufferResized);
+
+    glfwPollEvents();
+  }
+
+  if (physicsThread.joinable()) {
+    std::cout << "[Game] waiting for physics thread to exit...\n";
+    physicsThread.join();
+    std::cout << "[Game] Physics thread exited cleanly.\n";
+  }
 }
 
 void Game::update(float deltaTime) {
@@ -212,7 +260,7 @@ CameraParams Game::computeCameraParams(const Player &player, const World &world,
   float worldHeight = world.getHeight() * tileSize;
   cam.position.x =
       std::max(cam.visibleWidth / 2.0f,
-               std::min(cam.position.x, worldWidth - cam.visibleHeight / 2.0f));
+               std::min(cam.position.x, worldWidth - cam.visibleWidth / 2.0f));
   cam.position.y = std::max(
       cam.visibleHeight / 2.0f,
       std::min(cam.position.y, worldHeight - cam.visibleHeight / 2.0f));
@@ -257,6 +305,14 @@ void Game::handleInput() {
   if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player.isGrounded) {
     player.velocity.y = -player.jumpSpeed;
     player.isGrounded = false;
+  }
+
+  // Graceful shutdown on ESC
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    std::cout << "[Game] Shutting down...\n";
+    running = false;
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
+    return;
   }
 
   CameraParams cam =
@@ -318,12 +374,13 @@ void Game::updateBuffers() {
   renderer.updateVertexBuffer("player", playerVertices);
   renderer.updateIndexBuffer("player", playerIndices);
 
-  // generateInventoryVertices(player.inventory,
-  // renderer.swapChainExtent.width,
-  //                          renderer.swapChainExtent.height,
-  //                          inventoryVertices, inventoryIndices);
-  //  renderer.updateVertexBuffer("inventory", inventoryVertices);
-  //  renderer.updateIndexBuffer("inventory", inventoryIndices);
+  // generateInventoryVertices(player.inventory, renderer.swapChainExtent.width,
+  //                         renderer.swapChainExtent.height, inventoryVertices,
+  //                          inventoryIndices);
+  // renderer.updateVertexBuffer("inventory",
+  // inventoryVertices);
+  // renderer.updateIndexBuffer("inventory",
+  // inventoryIndices);
 
   renderer.updateUniformBuffer(0);
 }
