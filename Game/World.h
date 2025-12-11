@@ -27,6 +27,18 @@ struct TileDefinition {
   float zValue;
 };
 
+struct Chunk {
+  int chunkX, chunkY;
+  std::vector<Tile> tiles;
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
+  bool needsUpdate = true;
+
+  Chunk(int x, int y, int chunkSize) : chunkX(x), chunkY(y) {
+    tiles.resize(chunkSize * chunkSize);
+  }
+};
+
 class TileRegistry {
 public:
   static std::unordered_map<uint16_t, TileProperties> tileTypes;
@@ -44,6 +56,7 @@ public:
   Tile &getTile(int x, int y);
   int getWidth() const { return width; }
   int getHeight() const { return height; }
+  void updateChunks(int playerX, int playerY, int loadRadiusChunks);
   void generate(unsigned int seed);
   void generateVertices(std::vector<Vertex> &vertices,
                         std::vector<uint32_t> &indices);

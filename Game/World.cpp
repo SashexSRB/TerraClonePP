@@ -7,6 +7,16 @@
 
 std::unordered_map<uint16_t, TileProperties> TileRegistry::tileTypes;
 std::unordered_map<uint16_t, TileProperties> TileRegistry::wallTypes;
+int chunkSize = 64;
+std::unordered_map<int64_t, Chunk> loadedChunks;
+
+int64_t chunkKey(int x, int y) {
+  return (static_cast<int64_t>(x) << 32) | static_cast<uint32_t>(y);
+}
+
+glm::ivec2 getPlayerChunk(int playerX, int playerY) {
+  return {playerX / chunkSize, playerY / chunkSize};
+}
 
 void TileRegistry::initialize() {
   static const std::vector<TileDefinition> tileDefs = {
@@ -97,6 +107,45 @@ void World::generate(unsigned int seed) {
     }
     */
   }
+}
+
+void World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
+  glm::ivec2 playerChunk = getPlayerChunk(playerX, playerY);
+
+  std::unordered_map<int64_t, Chunk> newLoaded;
+
+  for (int dx = -loadRadiusChunks; dx <= loadRadiusChunks; ++dx) {
+    for (int dy = -loadRadiusChunks; dy <= loadRadiusChunks; ++dy) {
+      int cx = playerChunk.x + dx;
+      int cy = playerChunk.y + dy;
+
+      // Clamp to world bounds
+      if (cx < 0 || cy < 0 || cx * chunkSize >= width ||
+          cy * chunkSize >= height)
+        continue;
+
+      int64_t key = chunkKey(cx, cy);
+
+      // keep existing chunk if loaded
+      if (loadedChunks.count(key)) {
+        newLoaded[key] = std::move(loadedChunks[key]);
+      } else {
+        // Otherwise, generate new chunk from tiles
+        Chunk c(cx, cy, chunkSize);
+        for (int tx = 0; tx < chunkSize; ++tx) {
+          for (int ty = 0; ty < chunkSize; ++ty) {
+            int worldX = cx * chunkSize + tx;
+            int worldY = cy * chunkSize + ty;
+            if (worldX >= width || worldY >= height)
+              continue;
+            c.tiles[tx + ty * chunkSize] = tiles[worldX][worldY];
+          }
+        }
+        newLoaded[key] = std::move(c);
+      }
+    }
+  }
+  loadedChunks = std::move(newLoaded);
 }
 
 void World::generateVertices(std::vector<Vertex> &vertices,
