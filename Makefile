@@ -36,7 +36,7 @@ TEXTURE_SOURCE = $(TEXTURE_DIR)/textures.png
 TEXTURE_OBJECT = $(BUILD_TEXTURE_DIR)/textures.png
 
 # Target executable
-TARGET = $(BUILD_DIR)/TC-EngineVK
+TARGET = $(BUILD_DIR)/TerraClonePP
 
 # Default target
 all: shaders textures engine game $(TARGET)
