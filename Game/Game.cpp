@@ -9,7 +9,7 @@
 VulkanApp app;
 
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
-    : renderer(renderer), window(window), world(200, 100), player(),
+    : renderer(renderer), window(window), world(8400, 2400), player(),
       worldChanged(true) {
   player.position = {(world.getWidth() * 32.0f) / 2.0f - 32.0f,
                      (world.getHeight() * 32.0f / 2.0f - 32.0f)};
