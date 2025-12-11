@@ -617,10 +617,10 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
 
   // Clamp camera to world bounds
   cameraPos.x =
-      std::max(screenWidth / 2.0f,
+      std::max(visibleWidth / 2.0f,
                std::min(cameraPos.x, worldWidth - visibleWidth / 2.0f));
   cameraPos.y =
-      std::max(screenHeight / 2.0f,
+      std::max(visibleHeight / 2.0f,
                std::min(cameraPos.y, worldHeight - visibleHeight / 2.0f));
 
   // Manual orthographic projection: map (0, 3200, 0, 1600) to (-1, 1, 1, -1)
@@ -630,9 +630,9 @@ void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
   ubo.proj[3][0] = -1.0f;                // x translation
   ubo.proj[3][1] = -1.0f;                // y translation
 
-  ubo.view = glm::translate(glm::mat4(1.0f),
-                            glm::vec3(-cameraPos.x + visibleWidth / 2,
-                                      -cameraPos.y + visibleHeight / 2, 0.0f));
+  ubo.view = glm::translate(
+      glm::mat4(1.0f), glm::vec3(-(cameraPos.x - visibleWidth / 2),
+                                 -(cameraPos.y - visibleHeight / 2), 0.0f));
   ubo.model = glm::mat4(1.0f);
 
   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
