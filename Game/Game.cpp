@@ -361,6 +361,12 @@ void Game::handleInput() {
 void Game::updateBuffers() {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
+
+  int playerTileX = static_cast<int>(player.position.x / 32.0f);
+  int playerTileY = static_cast<int>(player.position.y / 32.0f);
+
+  world.updateChunks(playerTileX, playerTileY, 2);
+
   if (worldChanged) {
     world.generateVertices(worldVertices, worldIndices);
     renderer.updateVertexBuffer("world", worldVertices);

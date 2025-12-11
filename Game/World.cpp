@@ -7,15 +7,15 @@
 
 std::unordered_map<uint16_t, TileProperties> TileRegistry::tileTypes;
 std::unordered_map<uint16_t, TileProperties> TileRegistry::wallTypes;
-int chunkSize = 64;
-std::unordered_map<int64_t, Chunk> loadedChunks;
+int World::chunkSize = 64;
+std::unordered_map<int64_t, Chunk> World::loadedChunks;
 
-int64_t chunkKey(int x, int y) {
+int64_t World::chunkKey(int x, int y) {
   return (static_cast<int64_t>(x) << 32) | static_cast<uint32_t>(y);
 }
 
 glm::ivec2 getPlayerChunk(int playerX, int playerY) {
-  return {playerX / chunkSize, playerY / chunkSize};
+  return {playerX / World::chunkSize, playerY / World::chunkSize};
 }
 
 void TileRegistry::initialize() {
@@ -152,78 +152,96 @@ void World::generateVertices(std::vector<Vertex> &vertices,
                              std::vector<uint32_t> &indices) {
   vertices.clear();
   indices.clear();
-  const float tileSize = 32.0f;          // Pixels per tile in world
-  const size_t maxVertices = 4294967295; // uint32_t limit for safety
-  for (int x = 0; x < width; ++x) {
-    for (int y = 0; y < height; y++) {
-      const Tile &tile = tiles[x][y];
-      if (!tile.isActive && tile.wallId == 0) // Skip empty tiles
-        continue;
 
-      if (vertices.size() >= maxVertices - 4)
-        throw std::runtime_error("Too many vertices for buffer");
+  const float tileSize = 32.0f;
+  const size_t maxVertices = 4294967295; // safety for uint32_t index
 
-      // Generate wall vertices (background)
-      if (tile.wallId != 0) {
-        const TileProperties &props = TileRegistry::wallTypes[tile.wallId];
-        auto texCoords =
-            getTexCoords(static_cast<int>(props.texCoord.x),
-                         static_cast<int>(props.texCoord.y), 256, 8);
-        uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+  // Iterate only over loaded chunks
+  for (auto &kv : loadedChunks) {
+    Chunk &chunk = kv.second;
 
-        vertices.push_back({{x * tileSize, y * tileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[0]});
-        vertices.push_back({{(x + 1) * tileSize, y * tileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[1]});
-        vertices.push_back({{(x + 1) * tileSize, (y + 1) * tileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[2]});
-        vertices.push_back({{x * tileSize, (y + 1) * tileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[3]});
+    // Start of chunk vertex offset
+    uint32_t baseChunkIndex = static_cast<uint32_t>(vertices.size());
 
-        indices.insert(indices.end(),
-                       {baseIndex, baseIndex + 1, baseIndex + 2, baseIndex + 2,
-                        baseIndex + 3, baseIndex});
-      }
+    for (int tx = 0; tx < chunkSize; ++tx) {
+      for (int ty = 0; ty < chunkSize; ++ty) {
+        Tile &tile = chunk.tiles[tx + ty * chunkSize];
 
-      // Generate tile vertices (foreground)
-      if (tile.isActive) {
-        const TileProperties &props = TileRegistry::tileTypes[tile.tileId];
-        auto texCoords =
-            getTexCoords(static_cast<int>(props.texCoord.x),
-                         static_cast<int>(props.texCoord.y), 256, 8);
-        uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+        // Skip empty tiles
+        if (!tile.isActive && tile.wallId == 0)
+          continue;
 
-        vertices.push_back({{x * tileSize, y * tileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[0]});
-        vertices.push_back({{(x + 1) * tileSize, y * tileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[1]});
-        vertices.push_back({{(x + 1) * tileSize, (y + 1) * tileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[2]});
-        vertices.push_back({{x * tileSize, (y + 1) * tileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[3]});
+        if (vertices.size() >= maxVertices - 4)
+          throw std::runtime_error("Too many vertices for buffer");
 
-        indices.insert(indices.end(),
-                       {baseIndex, baseIndex + 1, baseIndex + 2, baseIndex + 2,
-                        baseIndex + 3, baseIndex});
+        int worldX = chunk.chunkX * chunkSize + tx;
+        int worldY = chunk.chunkY * chunkSize + ty;
+
+        // Background wall
+        if (tile.wallId != 0) {
+          const TileProperties &props = TileRegistry::wallTypes[tile.wallId];
+          auto texCoords =
+              getTexCoords(static_cast<int>(props.texCoord.x),
+                           static_cast<int>(props.texCoord.y), 256, 8);
+          uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+
+          vertices.push_back({{worldX * tileSize, worldY * tileSize},
+                              props.zValue,
+                              {1.0f, 1.0f, 1.0f},
+                              texCoords[0]});
+          vertices.push_back({{(worldX + 1) * tileSize, worldY * tileSize},
+                              props.zValue,
+                              {1.0f, 1.0f, 1.0f},
+                              texCoords[1]});
+          vertices.push_back(
+              {{(worldX + 1) * tileSize, (worldY + 1) * tileSize},
+               props.zValue,
+               {1.0f, 1.0f, 1.0f},
+               texCoords[2]});
+          vertices.push_back({{worldX * tileSize, (worldY + 1) * tileSize},
+                              props.zValue,
+                              {1.0f, 1.0f, 1.0f},
+                              texCoords[3]});
+
+          indices.insert(indices.end(),
+                         {baseIndex, baseIndex + 1, baseIndex + 2,
+                          baseIndex + 2, baseIndex + 3, baseIndex});
+        }
+
+        // Foreground tile
+        if (tile.isActive) {
+          const TileProperties &props = TileRegistry::tileTypes[tile.tileId];
+          auto texCoords =
+              getTexCoords(static_cast<int>(props.texCoord.x),
+                           static_cast<int>(props.texCoord.y), 256, 8);
+          uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+
+          vertices.push_back({{worldX * tileSize, worldY * tileSize},
+                              props.zValue,
+                              {1.0f, 1.0f, 1.0f},
+                              texCoords[0]});
+          vertices.push_back({{(worldX + 1) * tileSize, worldY * tileSize},
+                              props.zValue,
+                              {1.0f, 1.0f, 1.0f},
+                              texCoords[1]});
+          vertices.push_back(
+              {{(worldX + 1) * tileSize, (worldY + 1) * tileSize},
+               props.zValue,
+               {1.0f, 1.0f, 1.0f},
+               texCoords[2]});
+          vertices.push_back({{worldX * tileSize, (worldY + 1) * tileSize},
+                              props.zValue,
+                              {1.0f, 1.0f, 1.0f},
+                              texCoords[3]});
+
+          indices.insert(indices.end(),
+                         {baseIndex, baseIndex + 1, baseIndex + 2,
+                          baseIndex + 2, baseIndex + 3, baseIndex});
+        }
       }
     }
   }
+
   std::cout << "Tiles generated: " << vertices.size() << " vertices, "
             << indices.size() << " indices.\n";
 }

@@ -34,6 +34,7 @@ struct Chunk {
   std::vector<uint32_t> indices;
   bool needsUpdate = true;
 
+  Chunk() = default;
   Chunk(int x, int y, int chunkSize) : chunkX(x), chunkY(y) {
     tiles.resize(chunkSize * chunkSize);
   }
@@ -52,10 +53,14 @@ private:
   int width, height;
 
 public:
+  static int chunkSize;
+  static std::unordered_map<int64_t, Chunk> loadedChunks;
+
   World(int w, int h);
   Tile &getTile(int x, int y);
   int getWidth() const { return width; }
   int getHeight() const { return height; }
+  static int64_t chunkKey(int x, int y);
   void updateChunks(int playerX, int playerY, int loadRadiusChunks);
   void generate(unsigned int seed);
   void generateVertices(std::vector<Vertex> &vertices,
