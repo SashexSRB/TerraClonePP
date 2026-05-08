@@ -9,51 +9,58 @@
 #include <thread>
 
 struct CameraParams {
-  glm::vec2 position;
-  float visibleWidth;
-  float visibleHeight;
+    glm::vec2 position;
+    float visibleWidth;
+    float visibleHeight;
 };
 
 class Game {
 public:
-  Game(GLFWwindow *window, VlkRenderer &renderer);
-  Game(const Game &) = delete;
-  Game &operator=(const Game &) = delete;
-  ~Game();
+    Game(GLFWwindow *window, VlkRenderer &renderer);
 
-  Player player;
-  World world;
-  void run();
-  void notifyWorldChanged();
+    Game(const Game &) = delete;
+
+    Game &operator=(const Game &) = delete;
+
+    ~Game();
+
+    Player player;
+    World world;
+
+    void run();
+
+    void notifyWorldChanged();
 
 private:
-  VlkRenderer &renderer;
-  GLFWwindow *window;
-  bool worldChanged = true;
+    VlkRenderer &renderer;
+    GLFWwindow *window;
+    bool worldChanged = true;
 
-  std::vector<Vertex> worldVertices;
-  std::vector<uint32_t> worldIndices;
+    std::vector<Vertex> worldVertices;
+    std::vector<uint32_t> worldIndices;
 
-  std::vector<Vertex> playerVertices;
-  std::vector<uint32_t> playerIndices;
+    std::vector<Vertex> playerVertices;
+    std::vector<uint32_t> playerIndices;
 
-  std::vector<Vertex> inventoryVertices;
-  std::vector<uint32_t> inventoryIndices;
+    std::vector<Vertex> inventoryVertices;
+    std::vector<uint32_t> inventoryIndices;
 
-  std::atomic<bool> running{true};
-  std::thread physicsThread;
-  std::mutex worldMutex;
+    std::atomic<bool> running{true};
+    std::thread physicsThread;
+    std::mutex worldMutex;
 
-  CameraParams computeCameraParams(const Player &player, const World &world,
-                                   int windowWidth, int windowHeight,
-                                   float tileSize, float visibleTilesX);
+    CameraParams computeCameraParams(const Player &player, const World &world,
+                                     int windowWidth, int windowHeight,
+                                     float tileSize, float visibleTilesX);
 
-  glm::ivec2 screenToTile(double mouseX, double mouseY, const CameraParams &cam,
-                          int windowWidth, int windowHeight, float tileSize);
+    glm::ivec2 screenToTile(double mouseX, double mouseY, const CameraParams &cam,
+                            int windowWidth, int windowHeight, float tileSize);
 
-  void update(float deltaTime);
-  void handleInput();
-  void updateBuffers();
+    void update(float deltaTime);
 
-  void gameLoopThread();
+    void handleInput();
+
+    void updateBuffers();
+
+    void gameLoopThread();
 };

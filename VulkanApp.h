@@ -11,27 +11,31 @@ class VlkValidator;
 
 class VulkanApp {
 public:
-  VulkanApp();
-  ~VulkanApp();
+    VulkanApp();
 
-  void run();
+    ~VulkanApp();
 
-  bool framebufferResized = false;
+    void run();
+
+    bool framebufferResized = false;
 
 private:
-  void initVulkan();
-  void mainLoop();
-  void cleanup();
-  void initWindow();
+    void initVulkan();
 
-  static void framebufferResizeCallback(GLFWwindow *window, int width,
-                                        int height);
+    void mainLoop();
 
-  GLFWwindow *window;
-  VlkRenderer vlkRenderer;
-  VlkValidator validator;
-  Game *game;
-  static const uint32_t WIDTH = 1600;
-  static const uint32_t HEIGHT = 800;
-  static const int MAX_FRAMES_IN_FLIGHT = 2;
+    void cleanup();
+
+    void initWindow();
+
+    static void framebufferResizeCallback(GLFWwindow *window, int width,
+                                          int height);
+
+    GLFWwindow *window;
+    VlkRenderer vlkRenderer;
+    VlkValidator validator;
+    Game *game;
+    static const uint32_t WIDTH = 1600;
+    static const uint32_t HEIGHT = 800;
+    static const int MAX_FRAMES_IN_FLIGHT = 2;
 };
