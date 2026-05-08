@@ -68,6 +68,7 @@ public:
     static int64_t chunkKey(int x, int y);
 
     bool updateChunks(int playerX, int playerY, int loadRadiusChunks);
+    void setTile(int x, int y, Tile t);
 
     void generate(unsigned int seed);
 

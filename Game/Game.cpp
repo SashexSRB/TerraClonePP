@@ -333,10 +333,11 @@ void Game::handleInput() {
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
         if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
             tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
-            Tile &tile = world.getTile(tileCoords.x, tileCoords.y);
-            if (tile.isActive && TileRegistry::tileTypes[tile.tileId].isSolid) {
-                player.inventory.addItem(tile.tileId, 1);
-                tile.isActive = false;
+            Tile t = world.getTile(tileCoords.x, tileCoords.y);
+            if (t.isActive && TileRegistry::tileTypes[t.tileId].isSolid) {
+                player.inventory.addItem(t.tileId, 1);
+                t.isActive = false;
+                world.setTile(tileCoords.x, tileCoords.y, t);
                 notifyWorldChanged();
             }
         }
@@ -346,14 +347,14 @@ void Game::handleInput() {
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
         if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
             tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
-            Tile &tile = world.getTile(tileCoords.x, tileCoords.y);
-            if (!tile.isActive && !player.inventory.items.empty()) {
-                tile.tileId = player.inventory.items[0].first;
-                tile.isActive = true;
+            Tile t = world.getTile(tileCoords.x, tileCoords.y);
+            if (!t.isActive && !player.inventory.items.empty()) {
+                t.tileId = player.inventory.items[0].first;
+                t.isActive = true;
+                world.setTile(tileCoords.x, tileCoords.y, t);
                 player.inventory.items[0].second--;
                 if (player.inventory.items[0].second <= 0)
                     player.inventory.items.erase(player.inventory.items.begin());
-
                 notifyWorldChanged();
             }
         }

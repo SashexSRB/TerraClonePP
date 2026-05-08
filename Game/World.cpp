@@ -154,6 +154,20 @@ bool World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
     return changed;
 }
 
+void World::setTile(int x, int y, Tile t) {
+    tiles[x][y] = t;
+
+    int cx = x / chunkSize;
+    int cy = y / chunkSize;
+    int64_t key = chunkKey(cx, cy);
+
+    if (loadedChunks.count(key)) {
+        int lx = x % chunkSize;
+        int ly = y % chunkSize;
+        loadedChunks[key].tiles[lx + ly * chunkSize] = t;
+    }
+}
+
 void World::generateVertices(std::vector<Vertex> &vertices,
                              std::vector<uint32_t> &indices) {
     vertices.clear();
