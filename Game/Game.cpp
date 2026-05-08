@@ -367,9 +367,9 @@ void Game::updateBuffers() {
     int playerTileX = static_cast<int>(player.position.x / 32.0f);
     int playerTileY = static_cast<int>(player.position.y / 32.0f);
 
-    world.updateChunks(playerTileX, playerTileY, 2);
+    bool chunksChanged = world.updateChunks(playerTileX, playerTileY, 2);
 
-    if (worldChanged) {
+    if (worldChanged || chunksChanged) {
         world.generateVertices(worldVertices, worldIndices);
         renderer.updateVertexBuffer("world", worldVertices);
         renderer.updateIndexBuffer("world", worldIndices);

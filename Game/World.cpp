@@ -99,7 +99,7 @@ void World::generate(unsigned int seed) {
         for (int y = terrainHeight + 20; y < height; ++y) { // start deeper
           double caveNoise = perlin.octave2D_01(
               x * 0.08, y * 0.03, 3); // adjust frequency and octaves if needed
-    
+
           if (caveNoise > 0.65) { // thresold controls cave density
             Tile &tile = tiles[x][y];
             tile.tileId = 0;
@@ -110,10 +110,10 @@ void World::generate(unsigned int seed) {
     }
 }
 
-void World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
+bool World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
     glm::ivec2 playerChunk = getPlayerChunk(playerX, playerY);
-
     std::unordered_map<int64_t, Chunk> newLoaded;
+    bool changed = false;
 
     for (int dx = -loadRadiusChunks; dx <= loadRadiusChunks; ++dx) {
         for (int dy = -loadRadiusChunks; dy <= loadRadiusChunks; ++dy) {
@@ -131,6 +131,7 @@ void World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
             if (loadedChunks.count(key)) {
                 newLoaded[key] = std::move(loadedChunks[key]);
             } else {
+                changed = true;
                 // Otherwise, generate new chunk from tiles
                 Chunk c(cx, cy, chunkSize);
                 for (int tx = 0; tx < chunkSize; ++tx) {
@@ -146,7 +147,11 @@ void World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
             }
         }
     }
+    if (newLoaded.size() != loadedChunks.size())
+        changed = true;
+
     loadedChunks = std::move(newLoaded);
+    return changed;
 }
 
 void World::generateVertices(std::vector<Vertex> &vertices,

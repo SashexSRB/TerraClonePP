@@ -67,7 +67,7 @@ public:
 
     static int64_t chunkKey(int x, int y);
 
-    void updateChunks(int playerX, int playerY, int loadRadiusChunks);
+    bool updateChunks(int playerX, int playerY, int loadRadiusChunks);
 
     void generate(unsigned int seed);
 
