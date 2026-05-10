@@ -46,6 +46,7 @@ private:
     std::atomic<bool> running{true};
     std::thread physicsThread;
     std::mutex worldMutex;
+    std::mutex renderMutex;
 
     CameraParams computeCameraParams(const Player &player, const World &world,
                                      int windowWidth, int windowHeight,

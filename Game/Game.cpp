@@ -68,28 +68,24 @@ void Game::gameLoopThread() {
 }
 
 void Game::run() {
-    static float lastTime = glfwGetTime();
-
     while (!glfwWindowShouldClose(window)) {
-        float currentTime = glfwGetTime();
-        float deltaTime = currentTime - lastTime;
-        lastTime = currentTime;
-
-        handleInput();
-
-        CameraParams cam = computeCameraParams(
-            player, world,
-            renderer.swapChainExtent.width,
-            renderer.swapChainExtent.height,
-            Constants::TileSize, Constants::VisibleTilesX
-        );
-
+        CameraParams cam;
         {
             std::lock_guard<std::mutex> lock(worldMutex);
+            handleInput();
+            cam = computeCameraParams(
+                player, world,
+                renderer.swapChainExtent.width,
+                renderer.swapChainExtent.height,
+                Constants::TileSize, Constants::VisibleTilesX
+            );
             updateBuffers(cam);
         }
 
-        renderer.drawFrame(window, app.framebufferResized, cam);
+        {
+            std::lock_guard<std::mutex> lock(renderMutex);
+            renderer.drawFrame(window, app.framebufferResized, cam);
+        }
 
         glfwPollEvents();
     }
@@ -392,58 +388,63 @@ void Game::updateBuffers(const CameraParams &cam) {
 
     bool chunksChanged = world.updateChunks(playerTileX, playerTileY, 2);
 
-    // Clean up GPU buffers for chunks that are no longer loaded
-    if (chunksChanged) {
-        // Collect currently valid keys
-        std::unordered_set<std::string> validKeys;
-        for (auto &kv : World::loadedChunks)
-            validKeys.insert(World::chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
+    {
+        std::lock_guard<std::mutex> lock(renderMutex);
 
-        // Destroy buffers for unloaded chunks
-        std::vector<std::string> toRemove;
-        for (auto &kv : renderer.meshes) {
-            if (kv.first == "player") continue;
-            if (!validKeys.count(kv.first))
-                toRemove.push_back(kv.first);
+        // Clean up GPU buffers for chunks that are no longer loaded
+        if (chunksChanged) {
+            // Collect currently valid keys
+            std::unordered_set<std::string> validKeys;
+            for (auto &kv : World::loadedChunks)
+                validKeys.insert(World::chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
+
+            // Destroy buffers for unloaded chunks
+            std::vector<std::string> toRemove;
+            for (auto &kv : renderer.meshes) {
+                if (kv.first == "player") continue;
+                if (!validKeys.count(kv.first))
+                    toRemove.push_back(kv.first);
+            }
+            for (auto &key : toRemove)
+                renderer.destroyMesh(key);
+
         }
-        for (auto &key : toRemove)
-            renderer.destroyMesh(key);
 
-    }
+        // update only dirty chunks
+        std::vector<Vertex> chunkVerts;
+        std::vector<uint32_t> chunkIndices;
 
-    // update only dirty chunks
-    std::vector<Vertex> chunkVerts;
-    std::vector<uint32_t> chunkIndices;
+        for (auto &kv : World::loadedChunks) {
+            Chunk& chunk = kv.second;
+            if (!chunk.needsUpdate && !chunksChanged) continue;
 
-    for (auto &kv : World::loadedChunks) {
-        Chunk& chunk = kv.second;
-        if (!chunk.needsUpdate && !chunksChanged) continue;
+            world.generateChunkVertices(chunk, chunkVerts, chunkIndices);
+            std::string key = World::chunkMeshKey(chunk.chunkX, chunk.chunkY);
 
-        world.generateChunkVertices(chunk, chunkVerts, chunkIndices);
-        std::string key = World::chunkMeshKey(chunk.chunkX, chunk.chunkY);
+            if (chunkVerts.empty() || chunkIndices.empty()) {
+                renderer.destroyMesh(key);
+                chunk.needsUpdate = false;
+                continue;
+            }
 
-        if (chunkVerts.empty() || chunkIndices.empty()) {
-            renderer.destroyMesh(key);
+            renderer.updateVertexBuffer(key, chunkVerts);
+            renderer.updateIndexBuffer(key, chunkIndices);
             chunk.needsUpdate = false;
-            continue;
         }
 
-        renderer.updateVertexBuffer(key, chunkVerts);
-        renderer.updateIndexBuffer(key, chunkIndices);
-        chunk.needsUpdate = false;
+        generatePlayerVertices(player, playerVertices, playerIndices);
+        renderer.updateVertexBuffer("player", playerVertices);
+        renderer.updateIndexBuffer("player", playerIndices);
+
+        // generateInventoryVertices(player.inventory, renderer.swapChainExtent.width,
+        //                         renderer.swapChainExtent.height, inventoryVertices,
+        //                          inventoryIndices);
+        // renderer.updateVertexBuffer("inventory",
+        // inventoryVertices);
+        // renderer.updateIndexBuffer("inventory",
+        // inventoryIndices);
     }
 
-    generatePlayerVertices(player, playerVertices, playerIndices);
-    renderer.updateVertexBuffer("player", playerVertices);
-    renderer.updateIndexBuffer("player", playerIndices);
-
-    // generateInventoryVertices(player.inventory, renderer.swapChainExtent.width,
-    //                         renderer.swapChainExtent.height, inventoryVertices,
-    //                          inventoryIndices);
-    // renderer.updateVertexBuffer("inventory",
-    // inventoryVertices);
-    // renderer.updateIndexBuffer("inventory",
-    // inventoryIndices);
 
     renderer.updateUniformBuffer(0, cam);
 }
