@@ -9,15 +9,7 @@ void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices,
     indices.clear();
 
 
-    const float texTileSize = static_cast<float>(Constants::AtlasTileSize) / static_cast<float>(Constants::AtlasWidth);
-    const std::array<glm::vec2, 4> texCoords = {
-        {
-            {0.0f,        texTileSize},
-            {texTileSize, texTileSize},
-            {texTileSize, 0.0f       },
-            {0.0f,        0.0f       }
-        }
-    };
+    auto texCoords = getTexCoords(4, 0, Constants::AtlasWidth, Constants::AtlasTileSize);
 
     pushQuad(
         vertices, indices,

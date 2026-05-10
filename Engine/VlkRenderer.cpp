@@ -1111,7 +1111,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
     renderPassInfo.renderArea.extent = swapChainExtent;
 
     std::array<VkClearValue, 2> clearValues = {};
-    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[0].color = {{0.27f, 0.51f, 0.71f, 1.0f}}; // DEFAULT SKY COLOR
     clearValues[1].depthStencil = {1.0f, 0};
 
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
