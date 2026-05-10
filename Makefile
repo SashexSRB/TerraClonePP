@@ -1,6 +1,6 @@
 # Compiler and tools
 CXX = g++
-GLSLC = ~/VulkanSDK/1.4.321.1/x86_64/bin/glslc
+GLSLC = glslc
 CFLAGS = -std=c++20 -O2 -IEngine -IGame
 LDFLAGS = -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
 

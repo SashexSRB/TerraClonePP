@@ -55,10 +55,9 @@ private:
     int width, height;
 
 public:
+    World(int w, int h);
     static int chunkSize;
     static std::unordered_map<int64_t, Chunk> loadedChunks;
-
-    World(int w, int h);
 
     Tile &getTile(int x, int y);
 
@@ -67,6 +66,10 @@ public:
 
     static int64_t chunkKey(int x, int y);
 
+    static std::string chunkMeshKey(int cx, int cy) {
+        return "chunk_" + std::to_string(cx) + "_" + std::to_string(cy);
+    };
+
     bool updateChunks(int playerX, int playerY, int loadRadiusChunks);
     void setTile(int x, int y, Tile t);
 
@@ -74,4 +77,6 @@ public:
 
     void generateVertices(std::vector<Vertex> &vertices,
                           std::vector<uint32_t> &indices);
+
+    void generateChunkVertices(Chunk &chunk, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
 };

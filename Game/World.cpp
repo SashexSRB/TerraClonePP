@@ -1,4 +1,6 @@
 #include "World.h"
+#include "MeshUtils.h"
+#include "Constants.h"
 #include "PerlinNoise.hpp"
 #include <cmath>
 #include <iostream>
@@ -165,6 +167,7 @@ void World::setTile(int x, int y, Tile t) {
         int lx = x % chunkSize;
         int ly = y % chunkSize;
         loadedChunks[key].tiles[lx + ly * chunkSize] = t;
+        loadedChunks[key].needsUpdate = true; // mark dirty
     }
 }
 
@@ -172,8 +175,7 @@ void World::generateVertices(std::vector<Vertex> &vertices,
                              std::vector<uint32_t> &indices) {
     vertices.clear();
     indices.clear();
-
-    const float tileSize = 32.0f;
+    
     const size_t maxVertices = 4294967295; // safety for uint32_t index
 
     // Iterate only over loaded chunks
@@ -202,30 +204,30 @@ void World::generateVertices(std::vector<Vertex> &vertices,
                     const TileProperties &props = TileRegistry::wallTypes[tile.wallId];
                     auto texCoords =
                             getTexCoords(static_cast<int>(props.texCoord.x),
-                                         static_cast<int>(props.texCoord.y), 256, 8);
+                                         static_cast<int>(props.texCoord.y), Constants::AtlasWidth, Constants::AtlasTileSize);
                     uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
 
                     vertices.push_back({
-                        {worldX * tileSize, worldY * tileSize},
+                        {worldX * Constants::TileSize, worldY * Constants::TileSize},
                         props.zValue,
                         {1.0f, 1.0f, 1.0f},
                         texCoords[0]
                     });
                     vertices.push_back({
-                        {(worldX + 1) * tileSize, worldY * tileSize},
+                        {(worldX + 1) * Constants::TileSize, worldY * Constants::TileSize},
                         props.zValue,
                         {1.0f, 1.0f, 1.0f},
                         texCoords[1]
                     });
                     vertices.push_back(
                         {
-                            {(worldX + 1) * tileSize, (worldY + 1) * tileSize},
+                            {(worldX + 1) * Constants::TileSize, (worldY + 1) * Constants::TileSize},
                             props.zValue,
                             {1.0f, 1.0f, 1.0f},
                             texCoords[2]
                         });
                     vertices.push_back({
-                        {worldX * tileSize, (worldY + 1) * tileSize},
+                        {worldX * Constants::TileSize, (worldY + 1) * Constants::TileSize},
                         props.zValue,
                         {1.0f, 1.0f, 1.0f},
                         texCoords[3]
@@ -243,30 +245,30 @@ void World::generateVertices(std::vector<Vertex> &vertices,
                     const TileProperties &props = TileRegistry::tileTypes[tile.tileId];
                     auto texCoords =
                             getTexCoords(static_cast<int>(props.texCoord.x),
-                                         static_cast<int>(props.texCoord.y), 256, 8);
+                                         static_cast<int>(props.texCoord.y), Constants::AtlasWidth, Constants::AtlasTileSize);
                     uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
 
                     vertices.push_back({
-                        {worldX * tileSize, worldY * tileSize},
+                        {worldX * Constants::TileSize, worldY * Constants::TileSize},
                         props.zValue,
                         {1.0f, 1.0f, 1.0f},
                         texCoords[0]
                     });
                     vertices.push_back({
-                        {(worldX + 1) * tileSize, worldY * tileSize},
+                        {(worldX + 1) * Constants::TileSize, worldY * Constants::TileSize},
                         props.zValue,
                         {1.0f, 1.0f, 1.0f},
                         texCoords[1]
                     });
                     vertices.push_back(
                         {
-                            {(worldX + 1) * tileSize, (worldY + 1) * tileSize},
+                            {(worldX + 1) * Constants::TileSize, (worldY + 1) * Constants::TileSize},
                             props.zValue,
                             {1.0f, 1.0f, 1.0f},
                             texCoords[2]
                         });
                     vertices.push_back({
-                        {worldX * tileSize, (worldY + 1) * tileSize},
+                        {worldX * Constants::TileSize, (worldY + 1) * Constants::TileSize},
                         props.zValue,
                         {1.0f, 1.0f, 1.0f},
                         texCoords[3]
@@ -284,4 +286,50 @@ void World::generateVertices(std::vector<Vertex> &vertices,
 
     std::cout << "Tiles generated: " << vertices.size() << " vertices, "
             << indices.size() << " indices.\n";
+}
+
+void World::generateChunkVertices(Chunk &chunk, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
+    vertices.clear();
+    indices.clear();
+    
+    for (int tx = 0; tx < chunkSize; ++tx) {
+        for (int ty = 0; ty < chunkSize; ++ty) {
+            Tile &tile = chunk.tiles[tx + ty * chunkSize];
+
+            if (!tile.isActive && tile.wallId == 0) continue;
+
+            int worldX = chunk.chunkX * chunkSize + tx;
+            int worldY = chunk.chunkY * chunkSize + ty;
+
+            // Background wall
+            if (tile.wallId != 0) {
+                const TileProperties &props = TileRegistry::wallTypes[tile.wallId];
+                auto texCoords = getTexCoords(
+                    static_cast<int>(props.texCoord.x),
+                    static_cast<int>(props.texCoord.y), Constants::AtlasWidth, Constants::AtlasTileSize
+                );
+
+                pushQuad(
+                    vertices, indices,
+                    worldX * Constants::TileSize, worldY * Constants::TileSize,
+                    Constants::TileSize, Constants::TileSize, props.zValue, texCoords
+                );
+            }
+
+            // Foreground tile
+            if (tile.isActive) {
+                const TileProperties &props = TileRegistry::tileTypes[tile.tileId];
+                auto texCoords = getTexCoords(
+                    static_cast<int>(props.texCoord.x),
+                    static_cast<int>(props.texCoord.y), Constants::AtlasWidth, Constants::AtlasTileSize
+                );
+
+                pushQuad(
+                    vertices, indices,
+                    worldX * Constants::TileSize, worldY * Constants::TileSize,
+                    Constants::TileSize, Constants::TileSize, props.zValue, texCoords
+                );
+            }
+        }
+    }
 }

@@ -3,14 +3,16 @@
 #include "../VulkanApp.h"
 #include <algorithm>
 #include <chrono>
+#include <unordered_set>
 #include <glm/gtc/matrix_transform.hpp>
+
+#include "Constants.h"
 // #include <iostream>
 
 VulkanApp app;
 
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
-    : renderer(renderer), window(window), world(8400, 2400), player(),
-      worldChanged(true) {
+    : renderer(renderer), window(window), world(8400, 2400), player() {
     player.position = {
         (world.getWidth() * 32.0f) / 2.0f - 32.0f,
         (world.getHeight() * 32.0f / 2.0f - 32.0f)
@@ -22,7 +24,15 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
         std::chrono::system_clock::now().time_since_epoch().count());
 
     world.generate(seed);
-    updateBuffers();
+
+    CameraParams cam = computeCameraParams(
+            player, world,
+            renderer.swapChainExtent.width,
+            renderer.swapChainExtent.height,
+            Constants::TileSize, Constants::VisibleTilesX
+    );
+
+    updateBuffers(cam);
 
     std::cout << "[Game] Starting physics thread...\n";
     physicsThread = std::thread(&Game::gameLoopThread, this);
@@ -57,8 +67,6 @@ void Game::gameLoopThread() {
     std::cout << "[Game] Thread exiting.\n";
 }
 
-void Game::notifyWorldChanged() { worldChanged = true; }
-
 void Game::run() {
     static float lastTime = glfwGetTime();
 
@@ -67,12 +75,21 @@ void Game::run() {
         float deltaTime = currentTime - lastTime;
         lastTime = currentTime;
 
-        handleInput(); {
+        handleInput();
+
+        CameraParams cam = computeCameraParams(
+            player, world,
+            renderer.swapChainExtent.width,
+            renderer.swapChainExtent.height,
+            Constants::TileSize, Constants::VisibleTilesX
+        );
+
+        {
             std::lock_guard<std::mutex> lock(worldMutex);
-            updateBuffers();
+            updateBuffers(cam);
         }
 
-        renderer.drawFrame(window, app.framebufferResized);
+        renderer.drawFrame(window, app.framebufferResized, cam);
 
         glfwPollEvents();
     }
@@ -86,6 +103,16 @@ void Game::run() {
 
 void Game::update(float deltaTime) {
     const float playerSize = 32.0f;
+
+    // Movement from input state written by main thread
+    player.velocity.x = 0.0f;
+    if (inputState.left)    player.velocity.x = -player.moveSpeed;
+    if (inputState.right)   player.velocity.x =  player.moveSpeed;
+
+    if (inputState.jump && player.isGrounded) {
+        player.velocity.y = -player.jumpSpeed;
+        player.isGrounded = false;
+    }
 
     // -----------------------------
     // Handle horizontal input
@@ -297,20 +324,6 @@ glm::ivec2 Game::screenToTile(double mouseX, double mouseY,
 }
 
 void Game::handleInput() {
-    float moveSpeed = player.moveSpeed;
-    player.velocity.x = 0.0f;
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        player.velocity.x = -moveSpeed;
-    }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        player.velocity.x = moveSpeed;
-    }
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player.isGrounded) {
-        player.velocity.y = -player.jumpSpeed;
-        player.isGrounded = false;
-    }
-
     // Graceful shutdown on ESC
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         std::cout << "[Game] Shutting down...\n";
@@ -319,15 +332,29 @@ void Game::handleInput() {
         return;
     }
 
-    CameraParams cam =
-            computeCameraParams(player, world, renderer.swapChainExtent.width,
-                                renderer.swapChainExtent.height, 32.0f, 100.0f);
+    inputState.left = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
+    inputState.right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
+    inputState.jump = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+
+    CameraParams cam = computeCameraParams(
+        player, world,
+        renderer.swapChainExtent.width,
+        renderer.swapChainExtent.height,
+        32.0f, 100.0f
+    );
 
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
-    glm::ivec2 tileCoords =
-            screenToTile(xpos, ypos, cam, renderer.swapChainExtent.width,
-                         renderer.swapChainExtent.height, 32.0f);
+
+    float moveSpeed = player.moveSpeed;
+    player.velocity.x = 0.0f;
+
+    glm::ivec2 tileCoords = screenToTile(
+        xpos, ypos, cam,
+        renderer.swapChainExtent.width,
+        renderer.swapChainExtent.height,
+        32.0f
+    );
 
     // Left click: remove tile
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
@@ -338,7 +365,6 @@ void Game::handleInput() {
                 player.inventory.addItem(t.tileId, 1);
                 t.isActive = false;
                 world.setTile(tileCoords.x, tileCoords.y, t);
-                notifyWorldChanged();
             }
         }
     }
@@ -355,28 +381,56 @@ void Game::handleInput() {
                 player.inventory.items[0].second--;
                 if (player.inventory.items[0].second <= 0)
                     player.inventory.items.erase(player.inventory.items.begin());
-                notifyWorldChanged();
             }
         }
     }
 }
 
-void Game::updateBuffers() {
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-
+void Game::updateBuffers(const CameraParams &cam) {
     int playerTileX = static_cast<int>(player.position.x / 32.0f);
     int playerTileY = static_cast<int>(player.position.y / 32.0f);
 
     bool chunksChanged = world.updateChunks(playerTileX, playerTileY, 2);
 
-    if (worldChanged || chunksChanged) {
-        world.generateVertices(worldVertices, worldIndices);
-        renderer.updateVertexBuffer("world", worldVertices);
-        renderer.updateIndexBuffer("world", worldIndices);
-        worldChanged = false;
-        // std::cout << "World updated: " << worldVertices.size() << " vertices, "
-        //          << worldIndices.size() << " indices\n";
+    // Clean up GPU buffers for chunks that are no longer loaded
+    if (chunksChanged) {
+        // Collect currently valid keys
+        std::unordered_set<std::string> validKeys;
+        for (auto &kv : World::loadedChunks)
+            validKeys.insert(World::chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
+
+        // Destroy buffers for unloaded chunks
+        std::vector<std::string> toRemove;
+        for (auto &kv : renderer.meshes) {
+            if (kv.first == "player") continue;
+            if (!validKeys.count(kv.first))
+                toRemove.push_back(kv.first);
+        }
+        for (auto &key : toRemove)
+            renderer.destroyMesh(key);
+
+    }
+
+    // update only dirty chunks
+    std::vector<Vertex> chunkVerts;
+    std::vector<uint32_t> chunkIndices;
+
+    for (auto &kv : World::loadedChunks) {
+        Chunk& chunk = kv.second;
+        if (!chunk.needsUpdate && !chunksChanged) continue;
+
+        world.generateChunkVertices(chunk, chunkVerts, chunkIndices);
+        std::string key = World::chunkMeshKey(chunk.chunkX, chunk.chunkY);
+
+        if (chunkVerts.empty() || chunkIndices.empty()) {
+            renderer.destroyMesh(key);
+            chunk.needsUpdate = false;
+            continue;
+        }
+
+        renderer.updateVertexBuffer(key, chunkVerts);
+        renderer.updateIndexBuffer(key, chunkIndices);
+        chunk.needsUpdate = false;
     }
 
     generatePlayerVertices(player, playerVertices, playerIndices);
@@ -391,5 +445,5 @@ void Game::updateBuffers() {
     // renderer.updateIndexBuffer("inventory",
     // inventoryIndices);
 
-    renderer.updateUniformBuffer(0);
+    renderer.updateUniformBuffer(0, cam);
 }

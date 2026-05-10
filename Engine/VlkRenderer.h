@@ -19,6 +19,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "CameraParams.h"
+
 class Game;
 
 class VlkRenderer {
@@ -166,13 +168,15 @@ public:
 
     void createCommandBuffers();
 
-    void updateUniformBuffer(uint32_t currentImage);
+    void updateUniformBuffer(uint32_t currentImage, const CameraParams &cam);
 
     void updateVertexBuffer(const std::string &name,
                             const std::vector<Vertex> &vertices);
 
     void updateIndexBuffer(const std::string &name,
                            const std::vector<uint32_t> &indices);
+
+    void destroyMesh(const std::string &name);
 
     void draw(const std::string &name, VkCommandBuffer commandBuffer);
 
@@ -199,7 +203,7 @@ public:
                       VkMemoryPropertyFlags properties, VkBuffer &buffer,
                       VkDeviceMemory &bufferMemory);
 
-    void drawFrame(GLFWwindow *window, bool &framebufferResized);
+    void drawFrame(GLFWwindow *window, bool &framebufferResized, const CameraParams &cam);
 
     void recreateSwapChain(GLFWwindow *window);
 

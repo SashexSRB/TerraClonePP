@@ -3,15 +3,16 @@
 #include "../Engine/VlkRenderer.h"
 #include "Player.h"
 #include "World.h"
+#include "CameraParams.h"
 #include <GLFW/glfw3.h>
 #include <atomic>
 #include <mutex>
 #include <thread>
 
-struct CameraParams {
-    glm::vec2 position;
-    float visibleWidth;
-    float visibleHeight;
+struct InputState {
+    std::atomic<bool> left  = {false};
+    std::atomic<bool> right = {false};
+    std::atomic<bool> jump  = {false};
 };
 
 class Game {
@@ -32,12 +33,9 @@ public:
     void notifyWorldChanged();
 
 private:
+    InputState inputState;
     VlkRenderer &renderer;
     GLFWwindow *window;
-    bool worldChanged = true;
-
-    std::vector<Vertex> worldVertices;
-    std::vector<uint32_t> worldIndices;
 
     std::vector<Vertex> playerVertices;
     std::vector<uint32_t> playerIndices;
@@ -60,7 +58,7 @@ private:
 
     void handleInput();
 
-    void updateBuffers();
+    void updateBuffers(const CameraParams &cam);
 
     void gameLoopThread();
 };

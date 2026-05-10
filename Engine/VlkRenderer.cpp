@@ -591,58 +591,21 @@ void VlkRenderer::createUniformBuffers() {
     std::cout << "OK: Uniform Buffers created!\n";
 }
 
-void VlkRenderer::updateUniformBuffer(uint32_t currentImage) {
-    if (!game) {
-        UniformBufferObject ubo{};
-        ubo.proj = glm::mat4(1.0f);
-        ubo.proj[0][0] = 1.0f;
-        ubo.proj[1][1] = 1.0f;
-        ubo.proj[3][0] = 0.0f;
-        ubo.proj[3][1] = 0.0f;
-        ubo.view = glm::mat4(1.0f);
-        ubo.model = glm::mat4(1.0f);
-        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-        return;
-    }
-
-    // Identity model matrix with proper scale
+void VlkRenderer::updateUniformBuffer(uint32_t currentImage, const CameraParams &cam) {
     UniformBufferObject ubo{};
 
-    // Window dimensions
-    float screenWidth = static_cast<float>(swapChainExtent.width);
-    float screenHeight = static_cast<float>(swapChainExtent.height);
-
-    // Desired visible tiles
-    float tileSize = 32.0f;
-    float visibleTilesX = 100.0f;
-    float visibleWidth = visibleTilesX * tileSize;
-    float visibleHeight = visibleWidth * screenHeight / screenWidth;
-
-    // World dimensions
-    float worldWidth = game->world.getWidth() * tileSize;
-    float worldHeight = game->world.getHeight() * tileSize;
-
-    // Camera follows player (player.position must be accessible)
-    glm::vec2 cameraPos = game->player.position;
-
-    // Clamp camera to world bounds
-    cameraPos.x =
-            std::max(visibleWidth / 2.0f,
-                     std::min(cameraPos.x, worldWidth - visibleWidth / 2.0f));
-    cameraPos.y =
-            std::max(visibleHeight / 2.0f,
-                     std::min(cameraPos.y, worldHeight - visibleHeight / 2.0f));
-
-    // Manual orthographic projection: map (0, 3200, 0, 1600) to (-1, 1, 1, -1)
     ubo.proj = glm::mat4(1.0f);
-    ubo.proj[0][0] = 2.0f / visibleWidth; // x scale: 2/3200 = 0.000625
-    ubo.proj[1][1] = 2.0f / visibleHeight; // y scale: 2/1600 = 0.00125 (y-down)
-    ubo.proj[3][0] = -1.0f; // x translation
-    ubo.proj[3][1] = -1.0f; // y translation
+    ubo.proj[0][0] = 2.0f / cam.visibleWidth;
+    ubo.proj[1][1] = 2.0f / cam.visibleHeight;
+    ubo.proj[3][0] = -1.0f;
+    ubo.proj[3][1] = -1.0f;
 
     ubo.view = glm::translate(
-        glm::mat4(1.0f), glm::vec3(-(cameraPos.x - visibleWidth / 2),
-                                   -(cameraPos.y - visibleHeight / 2), 0.0f));
+        glm::mat4(1.0f),
+        glm::vec3(-(cam.position.x - cam.visibleWidth / 2.0f),
+                  -(cam.position.y - cam.visibleHeight / 2.0f),
+                  0.0f));
+
     ubo.model = glm::mat4(1.0f);
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
@@ -1085,20 +1048,32 @@ void VlkRenderer::updateIndexBuffer(const std::string &name,
     // indices\n";
 }
 
+void VlkRenderer::destroyMesh(const std::string &name) {
+    auto it = meshes.find(name);
+    if (it == meshes.end()) return;
+    MeshBuffer &mesh = it->second;
+    if (mesh.vertexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, mesh.vertexBuffer, nullptr);
+        vkFreeMemory(device, mesh.vertexMemory, nullptr);
+    }
+    if (mesh.indexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, mesh.indexBuffer, nullptr);
+        vkFreeMemory(device, mesh.indexMemory, nullptr);
+    }
+    meshes.erase(it);
+}
+
 void VlkRenderer::draw(const std::string &name, VkCommandBuffer commandBuffer) {
     auto it = meshes.find(name);
-    if (it == meshes.end())
-        throw std::runtime_error("Mesh '" + name + "' not found!");
+    if (it == meshes.end()) return;
 
     MeshBuffer &mesh = it->second;
-    if (mesh.indexCount == 0)
-        throw std::runtime_error("Mesh '" + name + "'  buffers not initialized!");
+    if (mesh.indexCount == 0) return;
 
     VkBuffer vertexBuffers[] = {mesh.vertexBuffer};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0,
-                         VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(commandBuffer, mesh.indexCount, 1, 0, 0, 0);
 }
 
@@ -1166,7 +1141,10 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
                             pipelineLayout, 0, 1, &descriptorSets[currentFrame],
                             0, nullptr);
 
-    draw("world", commandBuffer);
+    for (auto &kv : World::loadedChunks) {
+        std::string key = World::chunkMeshKey(kv.second.chunkX, kv.second.chunkY);
+        draw(key, commandBuffer);
+    }
     draw("player", commandBuffer);
     //  draw("inventory", commandBuffer);
 
@@ -1235,7 +1213,7 @@ void VlkRenderer::recreateSwapChain(GLFWwindow *window) {
     createFramebuffers();
 }
 
-void VlkRenderer::drawFrame(GLFWwindow *window, bool &framebufferResized) {
+void VlkRenderer::drawFrame(GLFWwindow *window, bool &framebufferResized, const CameraParams &cam) {
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE,
                     UINT64_MAX);
 
@@ -1251,7 +1229,7 @@ void VlkRenderer::drawFrame(GLFWwindow *window, bool &framebufferResized) {
         throw std::runtime_error("Failed to acquire swap chain image!");
     }
 
-    updateUniformBuffer(currentFrame);
+    updateUniformBuffer(currentFrame, cam);
 
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
