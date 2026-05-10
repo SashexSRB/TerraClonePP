@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+
+#include "CameraParams.h"
 #include "World.h"
 #include "../Engine/Vertex.h"
 
@@ -18,7 +20,7 @@ struct Inventory {
     }
 };
 
-void generateInventoryVertices(const Inventory &inventory, float screenWidth,
-                               float screenHeight,
+void generateInventoryVertices(const Inventory &inventory,
+                               const CameraParams &cam,
                                std::vector<Vertex> &vertices,
                                std::vector<uint32_t> &indices);

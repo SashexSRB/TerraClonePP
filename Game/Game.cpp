@@ -436,15 +436,18 @@ void Game::updateBuffers(const CameraParams &cam) {
         renderer.updateVertexBuffer("player", playerVertices);
         renderer.updateIndexBuffer("player", playerIndices);
 
-        // generateInventoryVertices(player.inventory, renderer.swapChainExtent.width,
-        //                         renderer.swapChainExtent.height, inventoryVertices,
-        //                          inventoryIndices);
-        // renderer.updateVertexBuffer("inventory",
-        // inventoryVertices);
-        // renderer.updateIndexBuffer("inventory",
-        // inventoryIndices);
-    }
+        generateInventoryVertices(
+            player.inventory, cam,
+            inventoryVertices,inventoryIndices
+        );
 
+        if (!inventoryVertices.empty() || !inventoryIndices.empty()) {
+            renderer.updateVertexBuffer("inventory", inventoryVertices);
+            renderer.updateIndexBuffer("inventory", inventoryIndices);
+        } else {
+            renderer.destroyMesh("inventory");
+        }
+    }
 
     renderer.updateUniformBuffer(0, cam);
 }

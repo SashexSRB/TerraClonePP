@@ -1146,7 +1146,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer,
         draw(key, commandBuffer);
     }
     draw("player", commandBuffer);
-    //  draw("inventory", commandBuffer);
+    draw("inventory", commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
 
