@@ -30,8 +30,6 @@ public:
 
     void run();
 
-    void notifyWorldChanged();
-
 private:
     InputState inputState;
     VlkRenderer &renderer;

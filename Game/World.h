@@ -66,6 +66,7 @@ public:
     int getHeight() const { return height; }
 
     static int64_t chunkKey(int x, int y);
+
     static std::string chunkMeshKey(int cx, int cy) {
         return "chunk_" + std::to_string(cx) + "_" + std::to_string(cy);
     };
