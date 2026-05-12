@@ -12,17 +12,27 @@
 VulkanApp app;
 
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
-    : renderer(renderer), window(window), world(8400, 2400), player() {
-    player.position = {
-        (world.getWidth() * 32.0f) / 2.0f - 32.0f,
-        (world.getHeight() * 32.0f / 2.0f - 32.0f)
-    };
+    : renderer(renderer), window(window), world(8400, 2400) {
 
     // Generate a random seed using system clock
     unsigned int seed = static_cast<unsigned int>(
         std::chrono::system_clock::now().time_since_epoch().count());
 
     world.generate(seed);
+
+    int spawnX = world.getWidth() / 2;
+    int spawnTileY = 0;
+    for (int y = 0; y < world.getHeight(); ++y) {
+        if (world.getTile(spawnX, y).isActive) {
+            spawnTileY = y;
+            break;
+        }
+    }
+
+    player.position = {
+        spawnX * Constants::TileSize,
+        (spawnTileY - 2) * Constants::TileSize
+    };
 
     CameraParams cam = computeCameraParams(
             player, world,

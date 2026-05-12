@@ -73,57 +73,60 @@ void World::setTile(int x, int y, Tile t) {
 void World::generate(unsigned int seed) {
     siv::PerlinNoise perlin(seed);
 
-    float frequency = 0.05f; // smoothness of terrain
-    float amplitude = 10.0f; // height variation
-    int groundLevel = height / 2;
+    // ─── Terrain ────────────────────────────────────────────────────────────
+    const float baseFreq    = 0.003f; // large scale hills
+    const float detailFreq  = 0.015f; // smaller bumps
+    const float baseAmp     = 60.0f;  // height range for large hills
+    const float detailAmp   = 15.0f;  // height range for detail
+    const int   groundLevel = height / 2;
 
-    // Generate terrain height for each column
     std::vector<int> surfaceHeight(width);
-
     for (int x = 0; x < width; ++x) {
-        // Simple noise using sine + rng offset
-        double noise = perlin.octave2D_01(x * frequency, 0.0, 4) * 2.0 - 1.0;
-
-        int terrainHeight = groundLevel + static_cast<int>(noise * amplitude);
-        surfaceHeight[x] = terrainHeight;
+        double base   = perlin.octave2D_01(x * baseFreq,   0.0, 4) * 2.0 - 1.0;
+        double detail = perlin.octave2D_01(x * detailFreq, 1.0, 2) * 2.0 - 1.0;
+        int h = groundLevel
+            + static_cast<int>(base   * baseAmp)
+            + static_cast<int>(detail * detailAmp);
+        surfaceHeight[x] = std::clamp(h, 10, height - 10);
     }
 
-    // Assign tiles based on terrain height
+    // ─── Tile assignment ────────────────────────────────────────────────────
     for (int x = 0; x < width; ++x) {
         int terrainHeight = surfaceHeight[x];
-
         for (int y = 0; y < height; ++y) {
             Tile &tile = tiles[x][y];
-
             if (y < terrainHeight) {
-                tile.tileId = 0;
+                tile.tileId  = 0;
                 tile.isActive = false;
             } else if (y == terrainHeight) {
-                tile.tileId = 3;
+                tile.tileId  = 3; // grass
                 tile.isActive = true;
-            } else if (y < terrainHeight + 5) {
-                tile.tileId = 1;
+            } else if (y < terrainHeight + 6) {
+                tile.tileId  = 1; // dirt
                 tile.isActive = true;
             } else {
-                tile.tileId = 2;
+                tile.tileId  = 2; // stone
                 tile.isActive = true;
             }
-            tile.wallId = (y > terrainHeight) ? 1 : 0;
+            tile.wallId = (y >= terrainHeight) ? 1 : 0;
         }
+    }
 
-        // carve caves underground
-        /*
-        for (int y = terrainHeight + 20; y < height; ++y) { // start deeper
-          double caveNoise = perlin.octave2D_01(
-              x * 0.08, y * 0.03, 3); // adjust frequency and octaves if needed
+    // ─── Caves ──────────────────────────────────────────────────────────────
+    const float caveFreqX   = 0.04f;
+    const float caveFreqY   = 0.04f;
+    const float caveThresh  = 0.62f;  // higher = fewer/smaller caves
+    const int   caveMinDepth = 16;     // tiles below surface before caves start
 
-          if (caveNoise > 0.65) { // thresold controls cave density
-            Tile &tile = tiles[x][y];
-            tile.tileId = 0;
-            tile.isActive = false;
-          }
+    for (int x = 0; x < width; ++x) {
+        int caveStart = surfaceHeight[x] + caveMinDepth;
+        for (int y = caveStart; y < height; ++y) {
+            double noise = perlin.octave2D_01(x * caveFreqX, y * caveFreqY, 3);
+            if (noise > caveThresh) {
+                tiles[x][y].tileId   = 0;
+                tiles[x][y].isActive = false;
+            }
         }
-        */
     }
 }
 
