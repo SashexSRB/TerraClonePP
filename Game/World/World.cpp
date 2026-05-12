@@ -172,47 +172,35 @@ bool World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
 }
 
 void World::generateChunkVertices(Chunk &chunk, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
-    vertices.clear();
-    indices.clear();
+    std::vector<QuadSpec> quads;
     
     for (int tx = 0; tx < chunkSize; ++tx) {
         for (int ty = 0; ty < chunkSize; ++ty) {
             Tile &tile = chunk.tiles[tx + ty * chunkSize];
-
             if (!tile.isActive && tile.wallId == 0) continue;
 
-            int worldX = chunk.chunkX * chunkSize + tx;
-            int worldY = chunk.chunkY * chunkSize + ty;
+            float wx = (chunk.chunkX * chunkSize + tx) * Constants::TileSize;
+            float wy = (chunk.chunkY * chunkSize + ty) * Constants::TileSize;
 
-            // Background wall
             if (tile.wallId != 0) {
                 const TileProperties &props = TileRegistry::wallTypes[tile.wallId];
-                auto texCoords = getTexCoords(
-                    static_cast<int>(props.texCoord.x),
-                    static_cast<int>(props.texCoord.y), Constants::AtlasWidth, Constants::AtlasTileSize
-                );
-
-                pushQuad(
-                    vertices, indices,
-                    worldX * Constants::TileSize, worldY * Constants::TileSize,
-                    Constants::TileSize, Constants::TileSize, props.zValue, texCoords
-                );
+                quads.push_back({
+                    wx, wy, Constants::TileSize, Constants::TileSize, props.zValue,
+                    getTexCoords(props.texCoord.x, props.texCoord.y,
+                                 Constants::AtlasWidth, Constants::AtlasTileSize)
+                });
             }
 
-            // Foreground tile
             if (tile.isActive) {
                 const TileProperties &props = TileRegistry::tileTypes[tile.tileId];
-                auto texCoords = getTexCoords(
-                    static_cast<int>(props.texCoord.x),
-                    static_cast<int>(props.texCoord.y), Constants::AtlasWidth, Constants::AtlasTileSize
-                );
-
-                pushQuad(
-                    vertices, indices,
-                    worldX * Constants::TileSize, worldY * Constants::TileSize,
-                    Constants::TileSize, Constants::TileSize, props.zValue, texCoords
-                );
+                quads.push_back({
+                    wx, wy, Constants::TileSize, Constants::TileSize, props.zValue,
+                    getTexCoords(props.texCoord.x, props.texCoord.y,
+                                 Constants::AtlasWidth, Constants::AtlasTileSize)
+                });
             }
         }
     }
+
+    buildMesh(vertices, indices, quads);
 }
