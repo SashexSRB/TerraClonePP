@@ -219,6 +219,13 @@ void Game::handleInput() {
     }
 }
 
+void Game::onScroll(double yoffset) {
+    if (yoffset > 0)
+        player.inventory.activeSlot = (player.inventory.activeSlot - 1 + INVENTORY_SLOTS) % INVENTORY_SLOTS;
+    else if (yoffset < 0)
+        player.inventory.activeSlot = (player.inventory.activeSlot + 1) % INVENTORY_SLOTS;
+}
+
 void Game::updateBuffers(const CameraParams &cam) {
     int playerTileX = static_cast<int>(player.position.x / 32.0f);
     int playerTileY = static_cast<int>(player.position.y / 32.0f);

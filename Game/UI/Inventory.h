@@ -4,6 +4,7 @@
 #include <vector>
 #include <array>
 #include <cstdint>
+#include <atomic>
 
 constexpr int INVENTORY_SLOTS = 10;
 constexpr int MAX_STACK_SIZE  = 999;
@@ -16,7 +17,7 @@ struct ItemStack {
 
 struct Inventory {
     std::array<ItemStack, INVENTORY_SLOTS> slots;
-    int activeSlot = 0;
+    std::atomic<int> activeSlot = 0;
 
     void addItem(uint32_t tileId, int count) {
         // First try to stack onto existing slot with same tile.
