@@ -5,10 +5,8 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-VulkanApp::VulkanApp() : window(nullptr), game(nullptr) {
-}
-
-VulkanApp::~VulkanApp() { cleanup(); }
+VulkanApp::VulkanApp() : window(nullptr), game(nullptr) { }
+VulkanApp::~VulkanApp() {}
 
 void VulkanApp::framebufferResizeCallback(GLFWwindow *window, int width, int height) {
     auto app = reinterpret_cast<VulkanApp *>(glfwGetWindowUserPointer(window));
@@ -64,11 +62,7 @@ void VulkanApp::initVulkan() {
 }
 
 void VulkanApp::mainLoop() {
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-        game->run();
-    }
-
+    game->run();
     vkDeviceWaitIdle(vlkRenderer.device);
 }
 
@@ -128,5 +122,7 @@ void VulkanApp::run() {
     initWindow();
     initVulkan();
     mainLoop();
+    delete game;
+    game = nullptr;
     cleanup();
 }
