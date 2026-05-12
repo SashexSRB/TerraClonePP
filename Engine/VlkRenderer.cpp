@@ -4,14 +4,15 @@
 #include "../Lib/stb_image.h"
 #include "../Game/Game.h"
 
-#include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <set>
 #include <stdexcept>
 #include <vulkan/vulkan.h>
+#include <GLFW/glfw3.h>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -636,8 +637,8 @@ void VlkRenderer::createDescriptorSets() {
 }
 
 void VlkRenderer::createGraphicsPipeline() {
-    auto vertShaderCode = readFile("Build/Engine/Shaders/vert.spv");
-    auto fragShaderCode = readFile("Build/Engine/Shaders/frag.spv");
+    auto vertShaderCode = readFile(ASSET_PATH "Build/Engine/Shaders/vert.spv");
+    auto fragShaderCode = readFile(ASSET_PATH "Build/Engine/Shaders/frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -1374,7 +1375,7 @@ void VlkRenderer::transitionImageLayout(VkImage image, VkFormat format,
 void VlkRenderer::createTextureImage() {
     int texWidth, texHeight, texChannels;
 
-    stbi_uc *pixels = stbi_load("Build/Game/Textures/textures.png", &texWidth,
+    stbi_uc *pixels = stbi_load(ASSET_PATH "Build/Game/Textures/textures.png", &texWidth,
                                 &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 

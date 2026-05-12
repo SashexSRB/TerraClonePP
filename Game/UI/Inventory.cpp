@@ -1,6 +1,6 @@
 #include "Inventory.h"
 #include "../Rendering/MeshUtils.h"
-#include "../World/World.h"
+#include "../World/Tile.h"
 #include "../Constants.h"
 
 void generateInventoryVertices(const Inventory &inventory,

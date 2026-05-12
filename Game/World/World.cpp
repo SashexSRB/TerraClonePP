@@ -1,6 +1,6 @@
 #include "World.h"
-#include "../Rendering/MeshUtils.h"
 #include "../Constants.h"
+#include "../Rendering/MeshUtils.h"
 #include "../../Lib/PerlinNoise.hpp"
 
 #include <unordered_map>

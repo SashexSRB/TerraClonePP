@@ -1,5 +1,7 @@
 #include "VlkValidator.h"
 #include <vulkan/vulkan_core.h>
+#include <cstring>
+#include <iostream>
 
 VlkValidator validator;
 

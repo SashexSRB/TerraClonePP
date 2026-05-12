@@ -1,6 +1,7 @@
 #pragma once
-#include <vector>
+
 #include "../../Engine/Vertex.h"
+#include <vector>
 
 void pushQuad(
     std::vector<Vertex> &vertices,
