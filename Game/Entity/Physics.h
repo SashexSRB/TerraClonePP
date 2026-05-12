@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Game.h"
+#include "../Game.h"
 #include "Player.h"
-#include "World.h"
+#include "../World/World.h"
 
 void applyMovement(Player &player, const InputState &input, float deltaTime);
 void resolveCollisions(Player &player, World &world, float deltaTime);

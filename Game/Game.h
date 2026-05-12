@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Player.h"
-#include "World.h"
+#include "Entity/Player.h"
+#include "World/World.h"
 #include "../Engine/VlkRenderer.h"
 #include "../Include/CameraParams.h"
 

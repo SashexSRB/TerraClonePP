@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Include/CameraParams.h"
-#include "../Engine/Vertex.h"
+#include "../../Include/CameraParams.h"
+#include "../../Engine/Vertex.h"
 
 #include <vector>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Inventory.h"
+#include "../UI/Inventory.h"
 #include <glm/glm.hpp>
 
 struct Player {
