@@ -1,7 +1,7 @@
 #include "World.h"
 #include "MeshUtils.h"
 #include "Constants.h"
-#include "PerlinNoise.hpp"
+#include "../Lib/PerlinNoise.hpp"
 #include <cmath>
 #include <iostream>
 #include <stdexcept>

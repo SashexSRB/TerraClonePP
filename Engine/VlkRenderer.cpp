@@ -12,7 +12,7 @@
 #include <strings.h>
 #include <vulkan/vulkan_core.h>
 
-#include "stb_image.h"
+#include "../Lib/stb_image.h"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
