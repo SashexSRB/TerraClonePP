@@ -52,8 +52,7 @@ void Game::gameLoopThread() {
 
     while (running) {
         auto currentTime = std::chrono::high_resolution_clock::now();
-        float deltaTime =
-                std::chrono::duration<float>(currentTime - lastTime).count();
+        float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
         lastTime = currentTime;
 
         // lock the world while updating
@@ -153,8 +152,7 @@ void Game::update(float deltaTime) {
     newPos.x += player.velocity.x * deltaTime;
 
     int topTileY = static_cast<int>(player.position.y / playerSize);
-    int bottomTileY =
-            static_cast<int>((player.position.y + playerSize - 1) / playerSize);
+    int bottomTileY = static_cast<int>((player.position.y + playerSize - 1) / playerSize);
 
     if (player.velocity.x > 0.0f) {
         // moving right
@@ -191,13 +189,11 @@ void Game::update(float deltaTime) {
     // Ground check to prevent jitter
     // -----------------------------
     int leftTileX = static_cast<int>(player.position.x / playerSize);
-    int rightTileX =
-            static_cast<int>((player.position.x + playerSize - 1) / playerSize);
+    int rightTileX = static_cast<int>((player.position.x + playerSize - 1) / playerSize);
 
     if (player.isGrounded && player.velocity.y >= 0.0f) {
         // Check if still on solid ground (use current position, with epsilon)
-        float bottomY = player.position.y + playerSize +
-                        0.001; // Small epsilon for FP precision
+        float bottomY = player.position.y + playerSize + 0.001; // Small epsilon for FP precision
         int bottomTileY = static_cast<int>(bottomY / playerSize);
         bool onGround = false;
         for (int x = leftTileX; x <= rightTileX; ++x) {
@@ -220,8 +216,7 @@ void Game::update(float deltaTime) {
 
     if (player.velocity.y > 0.0f) {
         // falling
-        int bottomTileY =
-                static_cast<int>((newPos.y + playerSize - 1) / playerSize);
+        int bottomTileY = static_cast<int>((newPos.y + playerSize - 1) / playerSize);
         bool collision = false;
         for (int x = leftTileX; x <= rightTileX; ++x) {
             if (isTileSolid(x, bottomTileY)) {
@@ -264,12 +259,14 @@ void Game::update(float deltaTime) {
     // -----------------------------
     // Clamp to world bounds
     // -----------------------------
-    player.position.x =
-            std::max(0.0f, std::min(player.position.x,
-                                    world.getWidth() * playerSize - playerSize));
-    player.position.y =
-            std::max(0.0f, std::min(player.position.y,
-                                    world.getHeight() * playerSize - playerSize));
+    player.position.x = std::max(
+        0.0f,
+        std::min(player.position.x,world.getWidth() * playerSize - playerSize)
+    );
+    player.position.y = std::max(
+        0.0f,
+        std::min(player.position.y, world.getHeight() * playerSize - playerSize)
+    );
 }
 
 CameraParams Game::computeCameraParams(const Player &player, const World &world,
@@ -285,12 +282,16 @@ CameraParams Game::computeCameraParams(const Player &player, const World &world,
     // Clamp camera to world bounds
     float worldWidth = world.getWidth() * tileSize;
     float worldHeight = world.getHeight() * tileSize;
-    cam.position.x =
-            std::max(cam.visibleWidth / 2.0f,
-                     std::min(cam.position.x, worldWidth - cam.visibleWidth / 2.0f));
+
+    cam.position.x = std::max(
+        cam.visibleWidth / 2.0f,
+        std::min(cam.position.x, worldWidth - cam.visibleWidth / 2.0f)
+    );
+
     cam.position.y = std::max(
         cam.visibleHeight / 2.0f,
-        std::min(cam.position.y, worldHeight - cam.visibleHeight / 2.0f));
+        std::min(cam.position.y, worldHeight - cam.visibleHeight / 2.0f)
+    );
 
     return cam;
 }
@@ -303,10 +304,8 @@ glm::ivec2 Game::screenToTile(double mouseX, double mouseY,
     float ndcY = static_cast<float>(mouseY) / windowHeight * 2.0f - 1.0f;
 
     // Map NDC to world coordinates
-    float worldX = cam.position.x - cam.visibleWidth / 2.0f +
-                   (ndcX + 1.0f) / 2.0f * cam.visibleWidth;
-    float worldY = cam.position.y - cam.visibleHeight / 2.0f +
-                   (ndcY + 1.0f) / 2.0f * cam.visibleHeight;
+    float worldX = cam.position.x - cam.visibleWidth  / 2.0f + (ndcX + 1.0f) / 2.0f * cam.visibleWidth;
+    float worldY = cam.position.y - cam.visibleHeight / 2.0f + (ndcY + 1.0f) / 2.0f * cam.visibleHeight;
 
     // World -> tile indices
     int tileX = static_cast<int>(worldX / tileSize);

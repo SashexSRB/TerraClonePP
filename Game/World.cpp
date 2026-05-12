@@ -53,7 +53,24 @@ World::World(int w, int h) : width(w), height(h) {
     tiles.resize(w, std::vector<Tile>(h));
 }
 
-Tile &World::getTile(int x, int y) { return tiles[x][y]; }
+Tile &World::getTile(int x, int y) {
+    return tiles[x][y];
+}
+
+void World::setTile(int x, int y, Tile t) {
+    tiles[x][y] = t;
+
+    int cx = x / chunkSize;
+    int cy = y / chunkSize;
+    int64_t key = chunkKey(cx, cy);
+
+    if (loadedChunks.count(key)) {
+        int lx = x % chunkSize;
+        int ly = y % chunkSize;
+        loadedChunks[key].tiles[lx + ly * chunkSize] = t;
+        loadedChunks[key].needsUpdate = true; // mark dirty
+    }
+}
 
 void World::generate(unsigned int seed) {
     siv::PerlinNoise perlin(seed);
@@ -154,137 +171,6 @@ bool World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
 
     loadedChunks = std::move(newLoaded);
     return changed;
-}
-
-void World::setTile(int x, int y, Tile t) {
-    tiles[x][y] = t;
-
-    int cx = x / chunkSize;
-    int cy = y / chunkSize;
-    int64_t key = chunkKey(cx, cy);
-
-    if (loadedChunks.count(key)) {
-        int lx = x % chunkSize;
-        int ly = y % chunkSize;
-        loadedChunks[key].tiles[lx + ly * chunkSize] = t;
-        loadedChunks[key].needsUpdate = true; // mark dirty
-    }
-}
-
-void World::generateVertices(std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
-    vertices.clear();
-    indices.clear();
-    
-    const size_t maxVertices = 4294967295; // safety for uint32_t index
-
-    // Iterate only over loaded chunks
-    for (auto &kv: loadedChunks) {
-        Chunk &chunk = kv.second;
-
-        // Start of chunk vertex offset
-        uint32_t baseChunkIndex = static_cast<uint32_t>(vertices.size());
-
-        for (int tx = 0; tx < chunkSize; ++tx) {
-            for (int ty = 0; ty < chunkSize; ++ty) {
-                Tile &tile = chunk.tiles[tx + ty * chunkSize];
-
-                // Skip empty tiles
-                if (!tile.isActive && tile.wallId == 0)
-                    continue;
-
-                if (vertices.size() >= maxVertices - 4)
-                    throw std::runtime_error("Too many vertices for buffer");
-
-                int worldX = chunk.chunkX * chunkSize + tx;
-                int worldY = chunk.chunkY * chunkSize + ty;
-
-                // Background wall
-                if (tile.wallId != 0) {
-                    const TileProperties &props = TileRegistry::wallTypes[tile.wallId];
-                    auto texCoords =
-                            getTexCoords(static_cast<int>(props.texCoord.x),
-                                         static_cast<int>(props.texCoord.y), Constants::AtlasWidth, Constants::AtlasTileSize);
-                    uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
-
-                    vertices.push_back({
-                        {worldX * Constants::TileSize, worldY * Constants::TileSize},
-                        props.zValue,
-                        {1.0f, 1.0f, 1.0f},
-                        texCoords[0]
-                    });
-                    vertices.push_back({
-                        {(worldX + 1) * Constants::TileSize, worldY * Constants::TileSize},
-                        props.zValue,
-                        {1.0f, 1.0f, 1.0f},
-                        texCoords[1]
-                    });
-                    vertices.push_back(
-                        {
-                            {(worldX + 1) * Constants::TileSize, (worldY + 1) * Constants::TileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[2]
-                        });
-                    vertices.push_back({
-                        {worldX * Constants::TileSize, (worldY + 1) * Constants::TileSize},
-                        props.zValue,
-                        {1.0f, 1.0f, 1.0f},
-                        texCoords[3]
-                    });
-
-                    indices.insert(indices.end(),
-                                   {
-                                       baseIndex, baseIndex + 1, baseIndex + 2,
-                                       baseIndex + 2, baseIndex + 3, baseIndex
-                                   });
-                }
-
-                // Foreground tile
-                if (tile.isActive) {
-                    const TileProperties &props = TileRegistry::tileTypes[tile.tileId];
-                    auto texCoords =
-                            getTexCoords(static_cast<int>(props.texCoord.x),
-                                         static_cast<int>(props.texCoord.y), Constants::AtlasWidth, Constants::AtlasTileSize);
-                    uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
-
-                    vertices.push_back({
-                        {worldX * Constants::TileSize, worldY * Constants::TileSize},
-                        props.zValue,
-                        {1.0f, 1.0f, 1.0f},
-                        texCoords[0]
-                    });
-                    vertices.push_back({
-                        {(worldX + 1) * Constants::TileSize, worldY * Constants::TileSize},
-                        props.zValue,
-                        {1.0f, 1.0f, 1.0f},
-                        texCoords[1]
-                    });
-                    vertices.push_back(
-                        {
-                            {(worldX + 1) * Constants::TileSize, (worldY + 1) * Constants::TileSize},
-                            props.zValue,
-                            {1.0f, 1.0f, 1.0f},
-                            texCoords[2]
-                        });
-                    vertices.push_back({
-                        {worldX * Constants::TileSize, (worldY + 1) * Constants::TileSize},
-                        props.zValue,
-                        {1.0f, 1.0f, 1.0f},
-                        texCoords[3]
-                    });
-
-                    indices.insert(indices.end(),
-                                   {
-                                       baseIndex, baseIndex + 1, baseIndex + 2,
-                                       baseIndex + 2, baseIndex + 3, baseIndex
-                                   });
-                }
-            }
-        }
-    }
-
-    std::cout << "Tiles generated: " << vertices.size() << " vertices, "
-            << indices.size() << " indices.\n";
 }
 
 void World::generateChunkVertices(Chunk &chunk, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
