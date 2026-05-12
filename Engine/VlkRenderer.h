@@ -10,13 +10,12 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Vertex.h"
+#include "../Include/CameraParams.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-
-#include "CameraParams.h"
 
 class Game;
 

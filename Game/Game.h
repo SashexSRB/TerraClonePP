@@ -1,9 +1,10 @@
 #pragma once
 
-#include "../Engine/VlkRenderer.h"
 #include "Player.h"
 #include "World.h"
-#include "CameraParams.h"
+#include "../Engine/VlkRenderer.h"
+#include "../Include/CameraParams.h"
+
 #include <GLFW/glfw3.h>
 #include <atomic>
 #include <mutex>

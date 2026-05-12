@@ -1,7 +1,8 @@
 #include "World.h"
 #include "MeshUtils.h"
-#include "Constants.h"
+#include "../Include/Constants.h"
 #include "../Lib/PerlinNoise.hpp"
+
 #include <unordered_map>
 
 std::unordered_map<uint16_t, TileProperties> TileRegistry::tileTypes;

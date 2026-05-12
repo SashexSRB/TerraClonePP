@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vector>
-
-#include "CameraParams.h"
+#include "../Include/CameraParams.h"
 #include "../Engine/Vertex.h"
+
+#include <vector>
 
 struct Inventory {
     std::vector<std::pair<uint16_t, int> > items;

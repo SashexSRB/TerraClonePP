@@ -1,8 +1,7 @@
 #include "Inventory.h"
-
-#include "Constants.h"
 #include "MeshUtils.h"
 #include "World.h"
+#include "../Include/Constants.h"
 
 void generateInventoryVertices(const Inventory &inventory,
                                const CameraParams &cam,
