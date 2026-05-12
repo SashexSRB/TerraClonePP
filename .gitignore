@@ -1,6 +1,4 @@
 *.o
 *.spv
-TC-EngineVK
-Build/
-output.txt
+cmake-build-debug/
 .idea/

@@ -637,8 +637,8 @@ void VlkRenderer::createDescriptorSets() {
 }
 
 void VlkRenderer::createGraphicsPipeline() {
-    auto vertShaderCode = readFile(ASSET_PATH "Build/Engine/Shaders/vert.spv");
-    auto fragShaderCode = readFile(ASSET_PATH "Build/Engine/Shaders/frag.spv");
+    auto vertShaderCode = readFile(ASSET_PATH "Shaders/vert.spv");
+    auto fragShaderCode = readFile(ASSET_PATH "Shaders/frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -1375,7 +1375,7 @@ void VlkRenderer::transitionImageLayout(VkImage image, VkFormat format,
 void VlkRenderer::createTextureImage() {
     int texWidth, texHeight, texChannels;
 
-    stbi_uc *pixels = stbi_load(ASSET_PATH "Build/Game/Textures/textures.png", &texWidth,
+    stbi_uc *pixels = stbi_load(ASSET_PATH "textures.png", &texWidth,
                                 &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 

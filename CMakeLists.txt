@@ -4,13 +4,9 @@ project(TerraClonePP VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
-
-# Output binary to Build/
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/Build)
 
 # ─── Sources ────────────────────────────────────────────────────────────────
 
@@ -37,7 +33,7 @@ target_include_directories(TerraClonePP PRIVATE
 # ─── Asset path ─────────────────────────────────────────────────────────────
 
 target_compile_definitions(TerraClonePP PRIVATE
-        ASSET_PATH="${CMAKE_SOURCE_DIR}/"
+        ASSET_PATH="${CMAKE_BINARY_DIR}/"
 )
 
 # ─── Find packages ──────────────────────────────────────────────────────────
@@ -63,7 +59,7 @@ target_link_libraries(TerraClonePP PRIVATE
 find_program(GLSLC glslc REQUIRED)
 
 set(SHADER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/Engine/Shaders)
-set(SHADER_BINARY_DIR ${CMAKE_SOURCE_DIR}/Build/Engine/Shaders)
+set(SHADER_BINARY_DIR ${CMAKE_BINARY_DIR}/Shaders)
 
 file(GLOB SHADER_SOURCES
         ${SHADER_SOURCE_DIR}/*.vert
@@ -96,11 +92,10 @@ add_dependencies(TerraClonePP Shaders)
 # ─── Textures ───────────────────────────────────────────────────────────────
 
 set(TEXTURE_SOURCE ${CMAKE_SOURCE_DIR}/Game/Textures/textures.png)
-set(TEXTURE_DEST   ${CMAKE_SOURCE_DIR}/Build/Game/Textures/textures.png)
+set(TEXTURE_DEST   ${CMAKE_BINARY_DIR}/textures.png)
 
 add_custom_command(
         OUTPUT  ${TEXTURE_DEST}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/Build/Game/Textures
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TEXTURE_SOURCE} ${TEXTURE_DEST}
         DEPENDS ${TEXTURE_SOURCE}
         COMMENT "Copying textures"
