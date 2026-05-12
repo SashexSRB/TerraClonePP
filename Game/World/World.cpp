@@ -189,6 +189,12 @@ void World::generate(unsigned int seed) {
 
 bool World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
     glm::ivec2 playerChunk = getPlayerChunk(playerX, playerY);
+
+    // Early exit if player is in the same chunk as last frame
+    static glm::ivec2 lastPlayerChunk = {-9999, -9999};
+    if (playerChunk == lastPlayerChunk) return false;
+    lastPlayerChunk = playerChunk;
+
     std::unordered_map<int64_t, Chunk> newLoaded;
     bool changed = false;
 
@@ -197,26 +203,22 @@ bool World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
             int cx = playerChunk.x + dx;
             int cy = playerChunk.y + dy;
 
-            // Clamp to world bounds
             if (cx < 0 || cy < 0 || cx * chunkSize >= width ||
                 cy * chunkSize >= height)
                 continue;
 
             int64_t key = chunkKey(cx, cy);
 
-            // keep existing chunk if loaded
             if (loadedChunks.count(key)) {
                 newLoaded[key] = std::move(loadedChunks[key]);
             } else {
                 changed = true;
-                // Otherwise, generate new chunk from tiles
                 Chunk c(cx, cy, chunkSize);
                 for (int tx = 0; tx < chunkSize; ++tx) {
                     for (int ty = 0; ty < chunkSize; ++ty) {
                         int worldX = cx * chunkSize + tx;
                         int worldY = cy * chunkSize + ty;
-                        if (worldX >= width || worldY >= height)
-                            continue;
+                        if (worldX >= width || worldY >= height) continue;
                         c.tiles[tx + ty * chunkSize] = tiles[worldX][worldY];
                     }
                 }
@@ -224,6 +226,7 @@ bool World::updateChunks(int playerX, int playerY, int loadRadiusChunks) {
             }
         }
     }
+
     if (newLoaded.size() != loadedChunks.size())
         changed = true;
 
