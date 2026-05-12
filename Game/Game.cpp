@@ -267,10 +267,7 @@ void Game::updateBuffers(const CameraParams &cam) {
         renderer.updateVertexBuffer("player", playerVertices);
         renderer.updateIndexBuffer("player", playerIndices);
 
-        generateInventoryVertices(
-            player.inventory, cam,
-            inventoryVertices,inventoryIndices
-        );
+        generateInventoryVertices(player.inventory,inventoryVertices,inventoryIndices );
 
         if (!inventoryVertices.empty() || !inventoryIndices.empty()) {
             renderer.updateVertexBuffer("inventory", inventoryVertices);
