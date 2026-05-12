@@ -393,7 +393,7 @@ VkShaderModule VlkRenderer::createShaderModule(const std::vector<char> &code) {
 
 void VlkRenderer::createDepthResources() {
     VkFormat depthFormat = findDepthFormat();
-    std::cout << "Depth format: " << depthFormat << "\n";
+    // std::cout << "Depth format: " << depthFormat << "\n";
     createImage(
         swapChainExtent.width, swapChainExtent.height, depthFormat,
         VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
