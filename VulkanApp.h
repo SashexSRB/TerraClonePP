@@ -1,22 +1,40 @@
 #pragma once
 
+#include "Engine/VlkRenderer.h"
+#include "Engine/VlkValidator.h"
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+class VlkValidator;
+
 class VulkanApp {
 public:
-  bool framebufferResized = false;
+    VulkanApp();
 
-  void run();
+    ~VulkanApp();
+
+    void run();
+
+    bool framebufferResized = false;
 
 private:
-  GLFWwindow *window;
-  uint32_t currentFrame = 0;
+    void initVulkan();
 
-  void initVulkan();
-  void mainLoop();
-  void cleanup();
-  void initWindow();
+    void mainLoop();
 
-  void drawFrame();
+    void cleanup();
+
+    void initWindow();
+
+    static void framebufferResizeCallback(GLFWwindow *window, int width, int height);
+
+    GLFWwindow *window;
+    VlkRenderer vlkRenderer;
+    VlkValidator validator;
+    Game *game;
+
+    static constexpr uint32_t WIDTH           = 1600;
+    static constexpr uint32_t HEIGHT          = 800;
+    static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 };

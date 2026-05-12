@@ -2,3 +2,5 @@
 *.spv
 TC-EngineVK
 Build/
+output.txt
+.idea/
