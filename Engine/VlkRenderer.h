@@ -170,11 +170,9 @@ public:
 
     void updateUniformBuffer(uint32_t currentImage, const CameraParams &cam);
 
-    void updateVertexBuffer(const std::string &name,
-                            const std::vector<Vertex> &vertices);
+    void updateVertexBuffer(const std::string &name, const std::vector<Vertex> &vertices);
 
-    void updateIndexBuffer(const std::string &name,
-                           const std::vector<uint32_t> &indices);
+    void updateIndexBuffer(const std::string &name, const std::vector<uint32_t> &indices);
 
     void destroyMesh(const std::string &name);
 

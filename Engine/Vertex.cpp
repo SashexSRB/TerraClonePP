@@ -1,7 +1,6 @@
 #include "Vertex.h"
 
-std::array<glm::vec2, 4> getTexCoords(int x, int y, int atlasSize = 256,
-                                      int tileSize = 8) {
+std::array<glm::vec2, 4> getTexCoords(int x, int y, int atlasSize = 256, int tileSize = 8) {
     float step = static_cast<float>(tileSize) / static_cast<float>(atlasSize);
 
     float u0 = x * step;
