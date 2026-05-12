@@ -17,7 +17,6 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
         (world.getWidth() * 32.0f) / 2.0f - 32.0f,
         (world.getHeight() * 32.0f / 2.0f - 32.0f)
     };
-    renderer.setGame(*this);
 
     // Generate a random seed using system clock
     unsigned int seed = static_cast<unsigned int>(

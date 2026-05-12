@@ -7,26 +7,20 @@
 #include <GLFW/glfw3.h>
 
 class VlkValidator;
+class Game;
 
 class VulkanApp {
 public:
     VulkanApp();
-
     ~VulkanApp();
-
     void run();
-
     bool framebufferResized = false;
 
 private:
     void initVulkan();
-
     void mainLoop();
-
     void cleanup();
-
     void initWindow();
-
     static void framebufferResizeCallback(GLFWwindow *window, int width, int height);
 
     GLFWwindow *window;
