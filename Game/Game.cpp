@@ -183,6 +183,16 @@ void Game::handleInput() {
         32.0f
     );
 
+    // Slot selection 1-9 (0 for slot 10)
+    for (int i = 0; i < 9; ++i) {
+        if (glfwGetKey(window, GLFW_KEY_1 + i) == GLFW_PRESS) {
+            std::cout << "Slot " << i << " selected\n";
+            player.inventory.activeSlot = i;
+        }
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) player.inventory.activeSlot = 9;
+
     // Left click: remove tile
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
         if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
@@ -201,13 +211,13 @@ void Game::handleInput() {
         if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
             tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
             Tile t = world.getTile(tileCoords.x, tileCoords.y);
-            if (!t.isActive && !player.inventory.items.empty()) {
-                t.tileId = player.inventory.items[0].first;
+            int activeSlot = player.inventory.activeSlot;
+
+            if (!t.isActive && player.inventory.hasItemInSlot(activeSlot)) {
+                t.tileId = player.inventory.slots[activeSlot].tileId;
                 t.isActive = true;
                 world.setTile(tileCoords.x, tileCoords.y, t);
-                player.inventory.items[0].second--;
-                if (player.inventory.items[0].second <= 0)
-                    player.inventory.items.erase(player.inventory.items.begin());
+                player.inventory.removeItem(activeSlot);
             }
         }
     }
@@ -216,38 +226,32 @@ void Game::handleInput() {
 void Game::updateBuffers(const CameraParams &cam) {
     int playerTileX = static_cast<int>(player.position.x / 32.0f);
     int playerTileY = static_cast<int>(player.position.y / 32.0f);
-
     bool chunksChanged = world.updateChunks(playerTileX, playerTileY, 2);
-
     {
         std::lock_guard<std::mutex> lock(renderMutex);
 
         // Clean up GPU buffers for chunks that are no longer loaded
         if (chunksChanged) {
-            // Collect currently valid keys
             std::unordered_set<std::string> validKeys;
             for (auto &kv : World::loadedChunks)
                 validKeys.insert(World::chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
 
-            // Destroy buffers for unloaded chunks
             std::vector<std::string> toRemove;
             for (auto &kv : renderer.meshes) {
-                if (kv.first == "player") continue;
+                if (kv.first == "player" || kv.first == "inventory") continue;
                 if (!validKeys.count(kv.first))
                     toRemove.push_back(kv.first);
             }
             for (auto &key : toRemove)
                 renderer.destroyMesh(key);
-
         }
 
-        // update only dirty chunks
+        // Update only dirty chunks
         std::vector<Vertex> chunkVerts;
         std::vector<uint32_t> chunkIndices;
-
         for (auto &kv : World::loadedChunks) {
-            Chunk& chunk = kv.second;
-            if (!chunk.needsUpdate && !chunksChanged) continue;
+            Chunk &chunk = kv.second;
+            if (!chunk.needsUpdate) continue;
 
             world.generateChunkVertices(chunk, chunkVerts, chunkIndices);
             std::string key = World::chunkMeshKey(chunk.chunkX, chunk.chunkY);
@@ -263,19 +267,18 @@ void Game::updateBuffers(const CameraParams &cam) {
             chunk.needsUpdate = false;
         }
 
+        // Always rebuild player and inventory every frame
         generatePlayerVertices(player, playerVertices, playerIndices);
         renderer.updateVertexBuffer("player", playerVertices);
         renderer.updateIndexBuffer("player", playerIndices);
 
-        generateInventoryVertices(player.inventory,inventoryVertices,inventoryIndices );
-
-        if (!inventoryVertices.empty() || !inventoryIndices.empty()) {
+        generateInventoryVertices(player.inventory, inventoryVertices, inventoryIndices);
+        if (!inventoryVertices.empty() && !inventoryIndices.empty()) {
             renderer.updateVertexBuffer("inventory", inventoryVertices);
             renderer.updateIndexBuffer("inventory", inventoryIndices);
         } else {
             renderer.destroyMesh("inventory");
         }
     }
-
     renderer.updateUniformBuffer(0, cam);
 }
