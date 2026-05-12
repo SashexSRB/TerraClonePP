@@ -2,14 +2,11 @@
 
 #include <array>
 #include <chrono>
-#include <cstddef>
-#include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <optional>
 #include <unordered_map>
 #include <vector>
-#include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
 #include "Vertex.h"

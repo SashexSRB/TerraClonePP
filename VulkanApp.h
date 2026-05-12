@@ -2,7 +2,6 @@
 
 #include "Engine/VlkRenderer.h"
 #include "Engine/VlkValidator.h"
-#include "Game/Game.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>

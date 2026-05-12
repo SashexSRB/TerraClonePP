@@ -1,18 +1,17 @@
 #include "VlkRenderer.h"
-#include "../Game/Game.h"
 #include "VlkValidator.h"
+
+#include "../Lib/stb_image.h"
+#include "../Game/Game.h"
 
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cstdint>
-#include <glm/vector_relational.hpp>
+#include <fstream>
 #include <limits>
 #include <set>
 #include <stdexcept>
-#include <strings.h>
-#include <vulkan/vulkan_core.h>
-
-#include "../Lib/stb_image.h"
+#include <vulkan/vulkan.h>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 

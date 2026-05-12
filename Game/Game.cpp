@@ -1,4 +1,3 @@
-// Game/Game.cpp
 #include "Game.h"
 #include "../VulkanApp.h"
 #include <algorithm>
@@ -7,7 +6,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Physics.h"
 #include "Constants.h"
-// #include <iostream>
 
 VulkanApp app;
 

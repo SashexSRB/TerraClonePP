@@ -2,9 +2,6 @@
 #include "MeshUtils.h"
 #include "Constants.h"
 #include "../Lib/PerlinNoise.hpp"
-#include <cmath>
-#include <iostream>
-#include <stdexcept>
 #include <unordered_map>
 
 std::unordered_map<uint16_t, TileProperties> TileRegistry::tileTypes;
