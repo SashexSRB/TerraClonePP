@@ -13,6 +13,11 @@ void VulkanApp::framebufferResizeCallback(GLFWwindow *window, int width, int hei
     app->framebufferResized = true;
 };
 
+void VulkanApp::scrollCallback(GLFWwindow *window, double xoffset, double yoffset) {
+    auto app = reinterpret_cast<VulkanApp *>(glfwGetWindowUserPointer(window));
+    if (app->game) app->game->onScroll(yoffset);
+}
+
 void VulkanApp::initWindow() {
     if (!glfwInit()) throw std::runtime_error("Failed to initialize GLFW!");
 
@@ -28,6 +33,7 @@ void VulkanApp::initWindow() {
 
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    glfwSetScrollCallback(window, scrollCallback);
     std::cout << "OK: Window Initialized.\n";
 }
 

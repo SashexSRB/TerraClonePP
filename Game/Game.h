@@ -31,6 +31,8 @@ public:
 
     void run();
 
+    void onScroll(double yoffset);
+
 private:
     InputState inputState;
     VlkRenderer &renderer;

@@ -22,6 +22,7 @@ private:
     void cleanup();
     void initWindow();
     static void framebufferResizeCallback(GLFWwindow *window, int width, int height);
+    static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);
 
     GLFWwindow *window;
     VlkRenderer vlkRenderer;
