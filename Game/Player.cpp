@@ -1,6 +1,6 @@
 #include "Player.h"
 #include "MeshUtils.h"
-#include "../Include/Constants.h"
+#include "Constants.h"
 
 void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
     vertices.clear();
