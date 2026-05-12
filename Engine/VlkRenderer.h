@@ -52,6 +52,12 @@ public:
         alignas(16) glm::mat4 proj;
     };
 
+    struct UIPushConstants {
+        glm::mat4 proj;
+        int useUIProj;
+        int _pad[3];    // Needed for 16-byte alignment
+    };
+
     struct MeshBuffer {
         VkBuffer vertexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
@@ -171,6 +177,8 @@ public:
     void destroyMesh(const std::string &name);
 
     void draw(const std::string &name, VkCommandBuffer commandBuffer);
+
+    void drawUI(const std::string &name, VkCommandBuffer commandBuffer);
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
