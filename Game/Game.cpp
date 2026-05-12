@@ -182,6 +182,19 @@ void Game::handleInput() {
         32.0f
     );
 
+    glm::vec2 playerCenter = {
+        player.position.x + Constants::TileSize / 2.0f,
+        player.position.y + Constants::TileSize / 2.0f
+    };
+
+    glm::vec2 tileCenter = {
+        tileCoords.x * Constants::TileSize + Constants::TileSize / 2.0f,
+        tileCoords.y * Constants::TileSize + Constants::TileSize / 2.0f
+    };
+
+    float distance = glm::length(tileCenter - playerCenter) / Constants::TileSize;
+    bool inReach = distance <= Constants::BlockReach;
+
     // Slot selection 1-9 (0 for slot 10)
     for (int i = 0; i < 9; ++i) {
         if (glfwGetKey(window, GLFW_KEY_1 + i) == GLFW_PRESS) player.inventory.activeSlot = i;
@@ -190,7 +203,7 @@ void Game::handleInput() {
     if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) player.inventory.activeSlot = 9;
 
     // Left click: remove tile
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && inReach) {
         if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
             tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
             Tile t = world.getTile(tileCoords.x, tileCoords.y);
@@ -203,7 +216,7 @@ void Game::handleInput() {
     }
 
     // Right click: place tile
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS && inReach) {
         if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
             tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
             Tile t = world.getTile(tileCoords.x, tileCoords.y);
