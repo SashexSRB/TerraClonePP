@@ -185,10 +185,7 @@ void Game::handleInput() {
 
     // Slot selection 1-9 (0 for slot 10)
     for (int i = 0; i < 9; ++i) {
-        if (glfwGetKey(window, GLFW_KEY_1 + i) == GLFW_PRESS) {
-            std::cout << "Slot " << i << " selected\n";
-            player.inventory.activeSlot = i;
-        }
+        if (glfwGetKey(window, GLFW_KEY_1 + i) == GLFW_PRESS) player.inventory.activeSlot = i;
     }
 
     if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) player.inventory.activeSlot = 9;
