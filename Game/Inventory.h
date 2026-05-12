@@ -20,7 +20,6 @@ struct Inventory {
     }
 };
 
-void generateInventoryVertices(const Inventory &inventory,
-                               const CameraParams &cam,
+void generateInventoryVertices(const Inventory &inventory, const CameraParams &cam,
                                std::vector<Vertex> &vertices,
                                std::vector<uint32_t> &indices);

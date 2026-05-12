@@ -28,8 +28,7 @@ private:
 
     void initWindow();
 
-    static void framebufferResizeCallback(GLFWwindow *window, int width,
-                                          int height);
+    static void framebufferResizeCallback(GLFWwindow *window, int width, int height);
 
     GLFWwindow *window;
     VlkRenderer vlkRenderer;

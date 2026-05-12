@@ -3,11 +3,9 @@
 #include "Constants.h"
 #include "MeshUtils.h"
 
-void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices,
-                            std::vector<uint32_t> &indices) {
+void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
     vertices.clear();
     indices.clear();
-
 
     auto texCoords = getTexCoords(4, 0, Constants::AtlasWidth, Constants::AtlasTileSize);
 

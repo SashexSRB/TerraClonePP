@@ -8,20 +8,19 @@ VulkanApp::VulkanApp() : window(nullptr), game(nullptr) {
 
 VulkanApp::~VulkanApp() { cleanup(); }
 
-void VulkanApp::framebufferResizeCallback(GLFWwindow *window, int width,
-                                          int height) {
+void VulkanApp::framebufferResizeCallback(GLFWwindow *window, int width, int height) {
     auto app = reinterpret_cast<VulkanApp *>(glfwGetWindowUserPointer(window));
     app->framebufferResized = true;
 };
 
 void VulkanApp::initWindow() {
-    if (!glfwInit())
-        throw std::runtime_error("Failed to initialize GLFW!");
+    if (!glfwInit()) throw std::runtime_error("Failed to initialize GLFW!");
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "TerraClone", nullptr, nullptr);
+
     if (!window) {
         glfwTerminate();
         throw std::runtime_error("Failed to create GLFW Window!");
@@ -60,18 +59,6 @@ void VulkanApp::initVulkan() {
     TileRegistry::initialize();
 
     game = new Game(window, vlkRenderer);
-
-    // uint32_t extensionCount = 0;
-    // vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-    // std::vector<VkExtensionProperties> extensions(extensionCount);
-    // vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount,
-    //                                        extensions.data());
-
-    // std::cout << "Available Extensions:\n";
-
-    // for (const auto &extension : extensions)
-    //   std::cout << '\t' << extension.extensionName << '\n';
 }
 
 void VulkanApp::mainLoop() {
@@ -95,15 +82,12 @@ void VulkanApp::cleanup() {
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyBuffer(vlkRenderer.device, vlkRenderer.uniformBuffers[i], nullptr);
-        vkFreeMemory(vlkRenderer.device, vlkRenderer.uniformBuffersMemory[i],
-                     nullptr);
+        vkFreeMemory(vlkRenderer.device, vlkRenderer.uniformBuffersMemory[i], nullptr);
     }
 
-    vkDestroyDescriptorPool(vlkRenderer.device, vlkRenderer.descriptorPool,
-                            nullptr);
+    vkDestroyDescriptorPool(vlkRenderer.device, vlkRenderer.descriptorPool, nullptr);
 
-    vkDestroyDescriptorSetLayout(vlkRenderer.device,
-                                 vlkRenderer.descriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(vlkRenderer.device, vlkRenderer.descriptorSetLayout, nullptr);
 
     vkDestroyBuffer(vlkRenderer.device, vlkRenderer.indexBuffer, nullptr);
     vkFreeMemory(vlkRenderer.device, vlkRenderer.indexBufferMemory, nullptr);
@@ -112,16 +96,13 @@ void VulkanApp::cleanup() {
     vkFreeMemory(vlkRenderer.device, vlkRenderer.vertexBufferMemory, nullptr);
 
     vkDestroyPipeline(vlkRenderer.device, vlkRenderer.graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(vlkRenderer.device, vlkRenderer.pipelineLayout,
-                            nullptr);
+    vkDestroyPipelineLayout(vlkRenderer.device, vlkRenderer.pipelineLayout, nullptr);
 
     vkDestroyRenderPass(vlkRenderer.device, vlkRenderer.renderPass, nullptr);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroySemaphore(vlkRenderer.device,
-                           vlkRenderer.imageAvailableSemaphores[i], nullptr);
-        vkDestroySemaphore(vlkRenderer.device,
-                           vlkRenderer.renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(vlkRenderer.device, vlkRenderer.imageAvailableSemaphores[i], nullptr);
+        vkDestroySemaphore(vlkRenderer.device, vlkRenderer.renderFinishedSemaphores[i], nullptr);
         vkDestroyFence(vlkRenderer.device, vlkRenderer.inFlightFences[i], nullptr);
     }
 
@@ -130,8 +111,7 @@ void VulkanApp::cleanup() {
     vkDestroyDevice(vlkRenderer.device, nullptr);
 
     if (validator.enableValidationLayers)
-        validator.DestroyDebugUtilsMessengerEXT(vlkRenderer.instance,
-                                                validator.debugMessenger, nullptr);
+        validator.DestroyDebugUtilsMessengerEXT(vlkRenderer.instance, validator.debugMessenger, nullptr);
 
     vkDestroySurfaceKHR(vlkRenderer.instance, vlkRenderer.surface, nullptr);
 

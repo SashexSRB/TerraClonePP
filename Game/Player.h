@@ -12,5 +12,4 @@ struct Player {
     Inventory inventory;
 };
 
-void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices,
-                            std::vector<uint32_t> &indices);
+void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);

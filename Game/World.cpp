@@ -171,8 +171,7 @@ void World::setTile(int x, int y, Tile t) {
     }
 }
 
-void World::generateVertices(std::vector<Vertex> &vertices,
-                             std::vector<uint32_t> &indices) {
+void World::generateVertices(std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
     vertices.clear();
     indices.clear();
     
