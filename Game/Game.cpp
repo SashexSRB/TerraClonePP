@@ -87,8 +87,9 @@ void Game::run() {
                 renderer.swapChainExtent.height,
                 Constants::TileSize, Constants::VisibleTilesX
             );
-            updateBuffers(cam);
         }
+
+        updateBuffers(cam);
 
         {
             std::lock_guard<std::mutex> lock(renderMutex);
