@@ -9,16 +9,21 @@
 #include <unordered_set>
 #include <glm/gtc/matrix_transform.hpp>
 
+#ifdef NDEBUG
+    constexpr bool BINARY_SAVE = true;
+#else
+    constexpr bool BINARY_SAVE = false;
+#endif
+
+const std::string SAVE_PATH_BIN = ASSET_PATH "../Saves/world.tcw";
+const std::string SAVE_PATH_TXT = ASSET_PATH "../Saves/world.tcw.txt";
+
 VulkanApp app;
 
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
-    : renderer(renderer), window(window), world(8400, 2400) {
+    : renderer(renderer), window(window), world(8400, 2400), lastAutoSave(std::chrono::steady_clock::now()) {
 
-    // Generate a random seed using system clock
-    unsigned int seed = static_cast<unsigned int>(
-        std::chrono::system_clock::now().time_since_epoch().count());
-
-    world.generate(seed);
+    loadOrGenerateWorld();
 
     int spawnX = world.getWidth() / 2;
     int spawnTileY = 0;
@@ -77,6 +82,13 @@ void Game::gameLoopThread() {
 
 void Game::run() {
     while (!glfwWindowShouldClose(window)) {
+        // Autosave every 5 minutes
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::minutes>(now - lastAutoSave).count() >= 5) {
+            saveWorld();
+            lastAutoSave = now;
+        }
+
         CameraParams cam;
         {
             std::lock_guard<std::mutex> lock(worldMutex);
@@ -164,9 +176,15 @@ void Game::handleInput() {
     // Graceful shutdown on ESC
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         std::cout << "[Game] Shutting down...\n";
+        saveWorld();
         running = false;
         glfwSetWindowShouldClose(window, GLFW_TRUE);
         return;
+    }
+
+    // Save world on F5
+    if (glfwGetKey(window, GLFW_KEY_F5) == GLFW_PRESS) {
+        saveWorld();
     }
 
     inputState.left = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
@@ -316,4 +334,20 @@ void Game::updateBuffers(const CameraParams &cam) {
         }
     }
     renderer.updateUniformBuffer(0, cam);
+}
+
+void Game::saveWorld() {
+    std::string path = BINARY_SAVE ? SAVE_PATH_BIN : SAVE_PATH_TXT;
+    world.save(path, BINARY_SAVE);
+}
+
+void Game::loadOrGenerateWorld() {
+    std::string path = BINARY_SAVE ? SAVE_PATH_BIN : SAVE_PATH_TXT;
+    if (!world.load(path, BINARY_SAVE)) {
+        std::cout << "[Game] No save found, generating new world...\n";
+        unsigned int seed = static_cast<unsigned int>(
+            std::chrono::system_clock::now().time_since_epoch().count()
+        );
+        world.generate(seed);
+    }
 }
