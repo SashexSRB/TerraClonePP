@@ -9,6 +9,7 @@
 #include <atomic>
 #include <mutex>
 #include <thread>
+#include <chrono>
 
 struct InputState {
     std::atomic<bool> left  = {false};
@@ -32,6 +33,11 @@ public:
     void run();
 
     void onScroll(double yoffset);
+
+    void saveWorld();
+    void loadOrGenerateWorld();
+
+    std::chrono::steady_clock::time_point lastAutoSave;
 
 private:
     InputState inputState;

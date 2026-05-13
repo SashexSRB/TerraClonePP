@@ -52,6 +52,7 @@ target_link_libraries(TerraClonePP PRIVATE
         Xxf86vm
         Xrandr
         Xi
+        stdc++fs
 )
 
 # ─── Shaders ────────────────────────────────────────────────────────────────
