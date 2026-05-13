@@ -260,8 +260,8 @@ void Game::updateBuffers(const CameraParams &cam) {
         // Clean up GPU buffers for chunks that are no longer loaded
         if (chunksChanged) {
             std::unordered_set<std::string> validKeys;
-            for (auto &kv : World::loadedChunks)
-                validKeys.insert(World::chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
+            for (auto &kv : world.loadedChunks)
+                validKeys.insert(world.chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
 
             std::vector<std::string> toRemove;
             for (auto &kv : renderer.meshes) {
@@ -276,12 +276,12 @@ void Game::updateBuffers(const CameraParams &cam) {
         // Update only dirty chunks
         std::vector<Vertex> chunkVerts;
         std::vector<uint32_t> chunkIndices;
-        for (auto &kv : World::loadedChunks) {
+        for (auto &kv : world.loadedChunks) {
             Chunk &chunk = kv.second;
             if (!chunk.needsUpdate) continue;
 
             world.generateChunkVertices(chunk, chunkVerts, chunkIndices);
-            std::string key = World::chunkMeshKey(chunk.chunkX, chunk.chunkY);
+            std::string key = world.chunkMeshKey(chunk.chunkX, chunk.chunkY);
 
             if (chunkVerts.empty() || chunkIndices.empty()) {
                 renderer.destroyMesh(key);
@@ -293,6 +293,14 @@ void Game::updateBuffers(const CameraParams &cam) {
             renderer.updateIndexBuffer(key, chunkIndices);
             chunk.needsUpdate = false;
         }
+
+        // Push chunk keys to the renderer.
+        std::vector<std::string> keys;
+        keys.reserve(world.loadedChunks.size());
+        for (auto &kv : world.loadedChunks)
+            keys.push_back(world.chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
+
+        renderer.setChunkKeys(keys);
 
         // Always rebuild player and inventory every frame
         generatePlayerVertices(player, playerVertices, playerIndices);
