@@ -4,16 +4,49 @@
 
 void applyMovement(Player &player, const InputState &input, float deltaTime) {
     player.velocity.x = 0.0f;
-
     if (input.left)  player.velocity.x = -player.moveSpeed;
     if (input.right) player.velocity.x = player.moveSpeed;
 
+    // Initial jump
     if (input.jump && player.isGrounded) {
         player.velocity.y = -player.jumpSpeed;
         player.isGrounded = false;
+        player.isJumping = true;
+        player.jumpTimer = 0.0f;
     }
 
-    player.velocity.y += 800.f * deltaTime;
+    // Variable jump (keep boosting upward while space held and within time limit
+    if (input.jump && player.isJumping && !player.isGrounded) {
+        player.jumpTimer += deltaTime;
+        if (player.jumpTimer < player.maxJumpTime) {
+            // Apply extra upward force proportional to remaining jump time
+            float jumpForce = player.jumpSpeed * (1.0f - player.jumpTimer / player.maxJumpTime);
+            player.velocity.y -= jumpForce * deltaTime;
+        } else {
+            player.isJumping = false;
+        }
+    }
+
+    // Cancel jump boost when space released
+    if (!input.jump) {
+        if (player.isJumping) {
+            // Cut velocity if still moving up
+            if (player.velocity.y < 0.0f) player.velocity.y *= 0.5f;
+            player.isJumping = false;
+        }
+    }
+
+    // Reset jump state when grounded
+    if (player.isGrounded) {
+        player.isJumping = false;
+        player.jumpTimer = 0.0f;
+    }
+
+    player.velocity.y += Constants::PlayerGravity * deltaTime;
+
+    // Falling speed cap
+    if (player.velocity.y > Constants::PlayerMaxVSpeed)
+        player.velocity.y = Constants::PlayerMaxVSpeed;
 }
 
 void resolveCollisions(Player &player, World &world, float deltaTime) {
