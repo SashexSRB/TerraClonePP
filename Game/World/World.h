@@ -3,6 +3,7 @@
 #include "Tile.h"
 #include "Chunk.h"
 #include "../../Engine/Vertex.h"
+#include "../UI/Inventory.h"
 
 #include <string>
 #include <unordered_map>
@@ -37,8 +38,8 @@ public:
     void generate(unsigned int seed);
     void generateChunkVertices(Chunk &chunk, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
 
-    void save(const std::string &path, bool binary) const;
-    bool load(const std::string &path, bool binary);
+    void save(const std::string &path, bool binary, const Inventory &inventory) const;
+    bool load(const std::string &path, bool binary, Inventory &inventory);
 private:
     unsigned int seed = 0;
 };

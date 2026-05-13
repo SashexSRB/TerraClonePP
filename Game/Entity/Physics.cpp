@@ -1,5 +1,7 @@
 #include "Physics.h"
 
+#include "Constants.h"
+
 void applyMovement(Player &player, const InputState &input, float deltaTime) {
     player.velocity.x = 0.0f;
 
@@ -15,7 +17,8 @@ void applyMovement(Player &player, const InputState &input, float deltaTime) {
 }
 
 void resolveCollisions(Player &player, World &world, float deltaTime) {
-    constexpr float playerSize = 32.0f;
+    constexpr float pw = Constants::PlayerWidth;
+    constexpr float ph = Constants::PlayerHeight;
 
     auto isTileSolid = [&](int x, int y) -> bool {
         if (x < 0 || x >= world.getWidth() || y < 0 || y >= world.getHeight()) return true;
@@ -30,41 +33,41 @@ void resolveCollisions(Player &player, World &world, float deltaTime) {
     glm::vec2 newPos = player.position;
     newPos.x += player.velocity.x * deltaTime;
 
-    int topTileY    = static_cast<int>(player.position.y / playerSize);
-    int bottomTileY = static_cast<int>((player.position.y + playerSize - 1) / playerSize);
+    int topTileY    = static_cast<int>(player.position.y / Constants::TileSize);
+    int bottomTileY = static_cast<int>((player.position.y + ph - 1) / Constants::TileSize);
 
     if (player.velocity.x > 0.0f) {
-        int rightTileX = static_cast<int>((newPos.x + playerSize - 1) / playerSize);
+        int rightTileX = static_cast<int>((newPos.x + pw - 1) / Constants::TileSize);
         bool collision = false;
 
         for (int y = topTileY; y <= bottomTileY; ++y)
             if (isTileSolid(rightTileX, y)) { collision = true; break; }
 
         if (collision) {
-            newPos.x = rightTileX * playerSize - playerSize;
+            newPos.x = rightTileX * Constants::TileSize - pw;
             player.velocity.x = 0.0f;
         }
     } else if (player.velocity.x < 0.0f) {
-        int leftTileX = static_cast<int>(newPos.x / playerSize);
+        int leftTileX = static_cast<int>(newPos.x / Constants::TileSize);
         bool collision = false;
 
         for (int y = topTileY; y <= bottomTileY; ++y)
             if (isTileSolid(leftTileX, y)) { collision = true; break; }
 
         if (collision) {
-            newPos.x = (leftTileX + 1) * playerSize;
+            newPos.x = (leftTileX + 1) * Constants::TileSize;
             player.velocity.x = 0.0f;
         }
     }
     player.position.x = newPos.x;
 
     // Ground check
-    int leftTileX  = static_cast<int>(player.position.x / playerSize);
-    int rightTileX = static_cast<int>((player.position.x + playerSize - 1) / playerSize);
+    int leftTileX  = static_cast<int>(player.position.x / Constants::TileSize);
+    int rightTileX = static_cast<int>((player.position.x + pw - 1) / Constants::TileSize);
 
     if (player.isGrounded && player.velocity.y >= 0.0f) {
-        float bottomY = player.position.y + playerSize + 0.001f;
-        int botTileY  = static_cast<int>(bottomY / playerSize);
+        float bottomY = player.position.y + ph + 0.001f;
+        int botTileY  = static_cast<int>(bottomY / Constants::TileSize);
         bool onGround = false;
 
         for (int x = leftTileX; x <= rightTileX; ++x)
@@ -81,14 +84,14 @@ void resolveCollisions(Player &player, World &world, float deltaTime) {
     newPos.y = player.position.y + player.velocity.y * deltaTime;
 
     if (player.velocity.y > 0.0f) {
-        int botTileY = static_cast<int>((newPos.y + playerSize - 1) / playerSize);
+        int botTileY = static_cast<int>((newPos.y + ph - 1) / Constants::TileSize);
         bool collision = false;
 
         for (int x = leftTileX; x <= rightTileX; ++x)
             if (isTileSolid(x, botTileY)) { collision = true; break; }
 
         if (collision) {
-            newPos.y = botTileY * playerSize - playerSize;
+            newPos.y = botTileY * Constants::TileSize - ph;
             player.velocity.y = 0.0f;
             player.isGrounded = true;
         } else {
@@ -96,14 +99,14 @@ void resolveCollisions(Player &player, World &world, float deltaTime) {
             player.position.y = newPos.y;
         }
     } else if (player.velocity.y < 0.0f) {
-        int topTileYCheck = static_cast<int>(newPos.y / playerSize);
+        int topTileYCheck = static_cast<int>(newPos.y / Constants::TileSize);
         bool collision = false;
 
         for (int x = leftTileX; x <= rightTileX; ++x)
             if (isTileSolid(x, topTileYCheck)) { collision = true; break; }
 
         if (collision) {
-            newPos.y = (topTileYCheck + 1) * playerSize;
+            newPos.y = (topTileYCheck + 1) * Constants::TileSize;
             player.velocity.y = 0.0f;
         } else {
             player.position.y = newPos.y;
@@ -112,6 +115,6 @@ void resolveCollisions(Player &player, World &world, float deltaTime) {
     player.position.y = newPos.y;
 
     // Clamp
-    player.position.x = std::max(0.0f, std::min(player.position.x, world.getWidth() * playerSize - playerSize));
-    player.position.y = std::max(0.0f, std::min(player.position.y, world.getHeight() * playerSize - playerSize));
+    player.position.x = std::max(0.0f, std::min(player.position.x, world.getWidth() * Constants::TileSize - pw));
+    player.position.y = std::max(0.0f, std::min(player.position.y, world.getHeight() * Constants::TileSize - ph));
 }
