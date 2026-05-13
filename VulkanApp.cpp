@@ -54,6 +54,7 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createTextureImage();
     vlkRenderer.createTextureImageView();
     vlkRenderer.createSampler();
+    vlkRenderer.createFontTexture(ASSET_PATH "ANDYB.TTF", 14);
     vlkRenderer.createUniformBuffers();
     vlkRenderer.createDescriptorPool();
     vlkRenderer.createDescriptorSets();
@@ -72,6 +73,11 @@ void VulkanApp::mainLoop() {
 
 void VulkanApp::cleanup() {
     vlkRenderer.cleanupSwapChain();
+
+    vkDestroySampler(vlkRenderer.device, vlkRenderer.fontSampler, nullptr);
+    vkDestroyImageView(vlkRenderer.device, vlkRenderer.fontImageView, nullptr);
+    vkDestroyImage(vlkRenderer.device, vlkRenderer.fontImage, nullptr);
+    vkFreeMemory(vlkRenderer.device, vlkRenderer.fontImageMemory, nullptr);
 
     vkDestroySampler(vlkRenderer.device, vlkRenderer.textureSampler, nullptr);
 

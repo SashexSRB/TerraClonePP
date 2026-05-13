@@ -332,6 +332,23 @@ void Game::updateBuffers(const CameraParams &cam) {
         } else {
             renderer.destroyMesh("inventory");
         }
+
+        std::vector<VlkRenderer::TextDrawCall> textCalls;
+        for (int i = 0; i < INVENTORY_SLOTS; ++i) {
+            if (!player.inventory.slots[i].empty()) {
+                float x = Constants::InventoryPadding + i * (Constants::InventorySlotSize + Constants::InventoryPadding);
+                float y = Constants::InventoryPadding;
+                std::string countStr = std::to_string(player.inventory.slots[i].count);
+                textCalls.push_back({
+                    countStr,
+                    x + Constants::InventorySlotSize - 4.0f * countStr.size(),
+                    y + Constants::InventorySlotSize - 4.0f,
+                    {1.0f, 1.0f, 1.0f}
+                });
+            }
+        }
+        renderer.setTextDrawCalls(textCalls);
+
     }
     renderer.updateUniformBuffer(0, cam);
 }

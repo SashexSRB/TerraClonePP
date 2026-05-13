@@ -17,4 +17,6 @@ namespace Constants {
     constexpr float PlayerGravity   = 3296.0f;
     constexpr float PlayerMaxVSpeed = 1368.0f;
     constexpr float BlockReach      = 6.0f;
+    constexpr float InventorySlotSize = 40.0f;
+    constexpr float InventoryPadding  = 4.0f;
 }
