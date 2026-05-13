@@ -11,6 +11,9 @@ struct Player {
     float moveSpeed = Constants::PlayerMoveSpeed;
     float jumpSpeed = Constants::PlayerJumpSpeed;
     bool isGrounded = false;
+    bool isJumping = false;
+    float jumpTimer = 0.0f;
+    float maxJumpTime = 0.17f;
     Inventory inventory;
 };
 

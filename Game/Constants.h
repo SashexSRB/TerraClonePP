@@ -12,7 +12,9 @@ namespace Constants {
     constexpr float PlayerHBHeight  = 90.0f;
     constexpr float PlrHbOffsetW    = (PlayerWidth - PlayerHBWidth) / 2.0f;
     constexpr float PlrHbOffsetH    = PlayerHeight - PlayerHBHeight;
-    constexpr float PlayerMoveSpeed = 300.0f;
-    constexpr float PlayerJumpSpeed = 575.0f;
+    constexpr float PlayerMoveSpeed = 352.0f;
+    constexpr float PlayerJumpSpeed = 1080.0f;
+    constexpr float PlayerGravity   = 3296.0f;
+    constexpr float PlayerMaxVSpeed = 1368.0f;
     constexpr float BlockReach      = 6.0f;
 }
