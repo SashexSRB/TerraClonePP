@@ -7,15 +7,13 @@
 
 std::unordered_map<uint16_t, TileProperties> TileRegistry::tileTypes;
 std::unordered_map<uint16_t, TileProperties> TileRegistry::wallTypes;
-int World::chunkSize = 64;
-std::unordered_map<int64_t, Chunk> World::loadedChunks;
 
 int64_t World::chunkKey(int x, int y) {
     return (static_cast<int64_t>(x) << 32) | static_cast<uint32_t>(y);
 }
 
-glm::ivec2 getPlayerChunk(int playerX, int playerY) {
-    return {playerX / World::chunkSize, playerY / World::chunkSize};
+glm::ivec2 World::getPlayerChunk(int playerX, int playerY) const {
+    return {playerX / chunkSize, playerY / chunkSize};
 }
 
 void TileRegistry::initialize() {

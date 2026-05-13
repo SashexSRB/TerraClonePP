@@ -54,8 +54,6 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createTextureImage();
     vlkRenderer.createTextureImageView();
     vlkRenderer.createSampler();
-    vlkRenderer.createVertexBuffer();
-    vlkRenderer.createIndexBuffer();
     vlkRenderer.createUniformBuffers();
     vlkRenderer.createDescriptorPool();
     vlkRenderer.createDescriptorSets();
@@ -90,12 +88,6 @@ void VulkanApp::cleanup() {
     vkDestroyDescriptorPool(vlkRenderer.device, vlkRenderer.descriptorPool, nullptr);
 
     vkDestroyDescriptorSetLayout(vlkRenderer.device, vlkRenderer.descriptorSetLayout, nullptr);
-
-    vkDestroyBuffer(vlkRenderer.device, vlkRenderer.indexBuffer, nullptr);
-    vkFreeMemory(vlkRenderer.device, vlkRenderer.indexBufferMemory, nullptr);
-
-    vkDestroyBuffer(vlkRenderer.device, vlkRenderer.vertexBuffer, nullptr);
-    vkFreeMemory(vlkRenderer.device, vlkRenderer.vertexBufferMemory, nullptr);
 
     vkDestroyPipeline(vlkRenderer.device, vlkRenderer.graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(vlkRenderer.device, vlkRenderer.pipelineLayout, nullptr);

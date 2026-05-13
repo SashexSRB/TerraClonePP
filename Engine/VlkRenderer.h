@@ -63,16 +63,6 @@ public:
         uint32_t indexCount = 0;
     };
 
-    // Initial Vertex
-    const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Top-left
-        {{0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Top-right
-        {{0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Bottom-right
-        {{-0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Bottom-left
-    };
-
-    // Initial Indices
-    const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
     std::unordered_map<std::string, MeshBuffer> meshes;
 
     // Vulkan Datatype Variables
@@ -95,10 +85,6 @@ public:
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool;
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void *> uniformBuffersMapped;
@@ -146,10 +132,6 @@ public:
     void createTextureImageView();
 
     void createSampler();
-
-    void createVertexBuffer();
-
-    void createIndexBuffer();
 
     void createUniformBuffers();
 
@@ -216,6 +198,8 @@ public:
     static void framebufferResizeCallback(GLFWwindow *window, int width,
                                           int height);
 
+    void setChunkKeys(const std::vector<std::string> &keys);
+
     // Vulkan Datatype Methods
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 
@@ -244,4 +228,7 @@ public:
                                  VkFormatFeatureFlags features);
 
     VkFormat findDepthFormat();
+
+private:
+    std::vector<std::string> chunkKeys;
 };

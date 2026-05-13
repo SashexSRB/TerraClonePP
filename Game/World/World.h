@@ -18,8 +18,8 @@ private:
 
 public:
     World(int w, int h);
-    static int chunkSize;
-    static std::unordered_map<int64_t, Chunk> loadedChunks;
+    int chunkSize = 64;
+    std::unordered_map<int64_t, Chunk> loadedChunks;
 
     Tile &getTile(int x, int y);
     void setTile(int x, int y, Tile t);
@@ -27,9 +27,11 @@ public:
     int getWidth() const { return width; }
     int getHeight() const { return height; }
 
-    static int64_t chunkKey(int x, int y);
+    glm::ivec2 getPlayerChunk(int playerX, int playerY) const;
 
-    static std::string chunkMeshKey(int cx, int cy) {
+    int64_t chunkKey(int x, int y);
+
+    std::string chunkMeshKey(int cx, int cy) {
         return "chunk_" + std::to_string(cx) + "_" + std::to_string(cy);
     };
 
