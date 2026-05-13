@@ -1,6 +1,9 @@
 #include "VlkRenderer.h"
 #include "VlkValidator.h"
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "../Lib/stb_truetype.h"
+
 #include "../Lib/stb_image.h"
 #include "../Game/Game.h"
 
@@ -503,9 +506,17 @@ void VlkRenderer::createDescriptorSetLayout() {
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {
+    VkDescriptorSetLayoutBinding fontSamplerBinding{};
+    fontSamplerBinding.binding = 2;
+    fontSamplerBinding.descriptorCount = 1;
+    fontSamplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    fontSamplerBinding.pImmutableSamplers = nullptr;
+    fontSamplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {
         uboLayoutBinding,
-        samplerLayoutBinding
+        samplerLayoutBinding,
+        fontSamplerBinding
     };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -570,7 +581,7 @@ void VlkRenderer::createDescriptorPool() {
     poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2);
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -607,7 +618,12 @@ void VlkRenderer::createDescriptorSets() {
         imageInfo.imageView = textureImageView;
         imageInfo.sampler = textureSampler;
 
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        VkDescriptorImageInfo fontImageInfo{};
+        fontImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        fontImageInfo.imageView   = fontImageView;
+        fontImageInfo.sampler     = fontSampler;
+
+        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -624,6 +640,14 @@ void VlkRenderer::createDescriptorSets() {
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[1].descriptorCount = 1;
         descriptorWrites[1].pImageInfo = &imageInfo;
+
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = descriptorSets[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pImageInfo = &fontImageInfo;
 
         vkUpdateDescriptorSets(
             device,
@@ -1006,6 +1030,49 @@ void VlkRenderer::drawUI(const std::string &name, VkCommandBuffer commandBuffer)
     vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &reset);
 }
 
+void VlkRenderer::drawText(const std::string &text, float x, float y, glm::vec3 color, VkCommandBuffer commandBuffer) {
+    std::vector<Vertex> verts;
+    std::vector<uint32_t> idxs;
+
+    float cx = x; float cy = y;
+    for (char c : text) {
+        if (c < 32 || c >= 128) continue;
+        stbtt_aligned_quad q;
+        stbtt_GetBakedQuad(bakedChars.data(), fontAtlasWidth, fontAtlasHeight, c - 32, &cx, &cy, &q, 1);
+
+        uint32_t base = static_cast<uint32_t>(verts.size());
+        verts.push_back({{q.x0, q.y0}, 0.02f, color, {q.s0, q.t0}});
+        verts.push_back({{q.x1, q.y0}, 0.02f, color, {q.s1, q.t0}});
+        verts.push_back({{q.x1, q.y1}, 0.02f, color, {q.s1, q.t1}});
+        verts.push_back({{q.x0, q.y1}, 0.02f, color, {q.s0, q.t1}});
+        idxs.insert(idxs.end(), {base, base+1, base+2, base+2, base+3, base});
+    }
+
+    if (verts.empty()) return;
+
+    updateVertexBuffer("__text__", verts);
+    updateIndexBuffer("__text__", idxs);
+
+    // push font constants
+    UIPushConstants push{};
+    push.useUIProj = 1;
+    push.useFont = 1;
+    push.proj = glm::mat4(1.0f);
+    push.proj[0][0] = 2.0f / swapChainExtent.width;
+    push.proj[1][1] = 2.0f / swapChainExtent.height;
+    push.proj[3][0] = -1.0f;
+    push.proj[3][1] = -1.0f;
+
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &push);
+
+    draw("__text__", commandBuffer);
+
+    // Reset push constants
+    UIPushConstants reset{};
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &reset);
+}
+
+
 void VlkRenderer::createCommandBuffers() {
     commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -1023,6 +1090,10 @@ void VlkRenderer::createCommandBuffers() {
 
 void VlkRenderer::setChunkKeys(const std::vector<std::string> &keys) {
     chunkKeys = keys;
+}
+
+void VlkRenderer::setTextDrawCalls(const std::vector<TextDrawCall> &calls) {
+    textDrawCalls = calls;
 }
 
 void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -1076,6 +1147,10 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 
     for (const auto &key : chunkKeys) {
         draw(key, commandBuffer);
+    }
+
+    for (const auto &call : textDrawCalls) {
+        drawText(call.text, call.x, call.y, call.color, commandBuffer);
     }
 
     draw("player", commandBuffer);
@@ -1419,4 +1494,101 @@ void VlkRenderer::createSampler() {
 
     if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
         throw std::runtime_error("Failed to create texture sampler!");
+}
+
+void VlkRenderer::createFontTexture(const std::string &fontPath, int fontSize) {
+    // load font file
+    std::ifstream file(fontPath, std::ios::binary | std::ios::ate);
+    if (!file) throw std::runtime_error("Failed to open font: " + fontPath);
+    size_t fileSize = file.tellg();
+    file.seekg(0);
+    std::vector<unsigned char> fontBuffer(fileSize);
+    file.read(reinterpret_cast<char*>(fontBuffer.data()), fileSize);
+
+    // bake font atlas
+    const int atlasW = 512, atlasH = 512;
+    std::vector<unsigned char> bitmap(atlasW * atlasH);
+
+    stbtt_BakeFontBitmap(fontBuffer.data(), 0, static_cast<float>(fontSize), bitmap.data(), atlasW, atlasH, 32, 96, bakedChars.data());
+
+    // Build outline bitmap — 2-channel: R = outline, G = glyph
+    const int outlineRadius = 1;
+    std::vector<unsigned char> combined(atlasW * atlasH * 2, 0);
+
+    for (int y = 0; y < atlasH; ++y) {
+        for (int x = 0; x < atlasW; ++x) {
+            unsigned char glyph = bitmap[y * atlasW + x];
+            combined[(y * atlasW + x) * 2 + 1] = glyph; // G = glyph
+
+            // Check neighbors for outline
+            if (glyph == 0) {
+                bool nearGlyph = false;
+                for (int dy = -outlineRadius; dy <= outlineRadius && !nearGlyph; ++dy) {
+                    for (int dx = -outlineRadius; dx <= outlineRadius && !nearGlyph; ++dx) {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < atlasW && ny >= 0 && ny < atlasH)
+                            if (bitmap[ny * atlasW + nx] > 0)
+                                nearGlyph = true;
+                    }
+                }
+                if (nearGlyph)
+                    combined[(y * atlasW + x) * 2 + 0] = 255; // R = outline
+            }
+        }
+    }
+
+    // Upload to Vulkan as R8_UNORM
+    VkDeviceSize imageSize = atlasW * atlasH * 2;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingMemory;
+    createBuffer(
+        imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer, stagingMemory
+    );
+
+    void *data;
+    vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data);
+    memcpy(data, combined.data(), imageSize);
+    vkUnmapMemory(device, stagingMemory);
+
+    createImage(
+        atlasW, atlasH,
+        VK_FORMAT_R8G8_UNORM,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        fontImage, fontImageMemory
+    );
+
+    transitionImageLayout(fontImage, VK_FORMAT_R8G8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    copyBufferToImage(stagingBuffer, fontImage, atlasW, atlasH);
+
+    transitionImageLayout(fontImage, VK_FORMAT_R8G8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingMemory, nullptr);
+
+    fontImageView = createImageView(fontImage, VK_FORMAT_R8G8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    // Font sampler - linear for smooth text
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &fontSampler) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create font sampler!");
+    }
+
+    fontAtlasHeight = atlasH;
+    fontAtlasWidth = atlasW;
+
+    std::cout << "OK: Font texture created!\n";
 }

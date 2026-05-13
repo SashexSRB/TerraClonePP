@@ -14,12 +14,18 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "../Lib/stb_truetype.h"
+
 class VlkRenderer {
 public:
     // Variables
     uint32_t glfwExtensionCount = 0;
     uint32_t currentFrame = 0;
     uint32_t indexCount;
+
+    std::array<stbtt_bakedchar, 96> bakedChars;
+    int fontAtlasWidth = 512;
+    int fontAtlasHeight = 512;
 
     // Constants
     const char **glfwExtensions;
@@ -52,7 +58,8 @@ public:
     struct UIPushConstants {
         glm::mat4 proj;
         int useUIProj;
-        int _pad[3];    // Needed for 16-byte alignment
+        int useFont;
+        int _pad[2];    // Needed for 16-byte alignment
     };
 
     struct MeshBuffer {
@@ -61,6 +68,12 @@ public:
         VkBuffer indexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory indexMemory = VK_NULL_HANDLE;
         uint32_t indexCount = 0;
+    };
+
+    struct TextDrawCall {
+        std::string text;
+        float x, y;
+        glm::vec3 color;
     };
 
     std::unordered_map<std::string, MeshBuffer> meshes;
@@ -101,6 +114,10 @@ public:
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
+    VkImage fontImage;
+    VkDeviceMemory fontImageMemory;
+    VkImageView fontImageView;
+    VkSampler fontSampler;
 
     // Methods
     void createInstance();
@@ -153,6 +170,8 @@ public:
 
     void drawUI(const std::string &name, VkCommandBuffer commandBuffer);
 
+    void drawText(const std::string &text, float x, float y, glm::vec3 color, VkCommandBuffer commandBuffer);
+
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
     void createSyncObjects();
@@ -179,6 +198,8 @@ public:
     void drawFrame(GLFWwindow *window, bool &framebufferResized, const CameraParams &cam);
 
     void recreateSwapChain(GLFWwindow *window);
+
+    void createFontTexture(const std::string &fontPath, int fontSize);
 
     int rateDeviceSuitability(VkPhysicalDevice device);
 
@@ -229,6 +250,9 @@ public:
 
     VkFormat findDepthFormat();
 
+    void setTextDrawCalls(const std::vector<TextDrawCall> &calls);
+
 private:
     std::vector<std::string> chunkKeys;
+    std::vector<TextDrawCall> textDrawCalls;
 };
