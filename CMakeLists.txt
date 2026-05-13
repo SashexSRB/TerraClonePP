@@ -104,3 +104,16 @@ add_custom_command(
 
 add_custom_target(Textures ALL DEPENDS ${TEXTURE_DEST})
 add_dependencies(TerraClonePP Textures)
+
+# ─── Fonts ───────────────────────────────────────────────────────────────
+set(FONT_SOURCE ${CMAKE_SOURCE_DIR}/Assets/Fonts/ANDYB.TTF)
+set(FONT_DEST   ${CMAKE_BINARY_DIR}/ANDYB.TTF)
+
+add_custom_command(
+        OUTPUT  ${FONT_DEST}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FONT_SOURCE} ${FONT_DEST}
+        DEPENDS ${FONT_SOURCE}
+        COMMENT "Copying font"
+)
+add_custom_target(Fonts ALL DEPENDS ${FONT_DEST})
+add_dependencies(TerraClonePP Fonts)
