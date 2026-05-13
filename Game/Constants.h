@@ -8,9 +8,11 @@ namespace Constants {
     constexpr float PlayerZ         = 0.1f;
     constexpr float PlayerWidth     = 64.0f;
     constexpr float PlayerHeight    = 96.0f;
-    constexpr float PlayerHBWidth   = 40.0f;
+    constexpr float PlayerHBWidth   = 44.0f;
     constexpr float PlayerHBHeight  = 90.0f;
     constexpr float PlrHbOffsetW    = (PlayerWidth - PlayerHBWidth) / 2.0f;
     constexpr float PlrHbOffsetH    = PlayerHeight - PlayerHBHeight;
+    constexpr float PlayerMoveSpeed = 300.0f;
+    constexpr float PlayerJumpSpeed = 575.0f;
     constexpr float BlockReach      = 6.0f;
 }
