@@ -3,7 +3,6 @@
 #include "Vertex.h"
 #include "../Include/CameraParams.h"
 
-#include <array>
 #include <chrono>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -64,14 +63,12 @@ public:
         uint32_t indexCount = 0;
     };
 
-    std::array<glm::vec2, 4> texCoords = getTexCoords(3, 0, 256, 8);
-
     // Initial Vertex
     const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[0]}, // Top-left
-        {{0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[1]}, // Top-right
-        {{0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[2]}, // Bottom-right
-        {{-0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, texCoords[3]}, // Bottom-left
+        {{-0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Top-left
+        {{0.5f, -0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Top-right
+        {{0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Bottom-right
+        {{-0.5f, 0.5f}, 0.0f, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Bottom-left
     };
 
     // Initial Indices
