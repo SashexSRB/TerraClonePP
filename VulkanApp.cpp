@@ -54,7 +54,7 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createTextureImage();
     vlkRenderer.createTextureImageView();
     vlkRenderer.createSampler();
-    vlkRenderer.createFontTexture(ASSET_PATH "ANDYB.TTF", 14);
+    vlkRenderer.createFontTexture(ASSET_PATH "ANDYB.TTF", 20);
     vlkRenderer.createUniformBuffers();
     vlkRenderer.createDescriptorPool();
     vlkRenderer.createDescriptorSets();

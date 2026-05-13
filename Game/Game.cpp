@@ -81,7 +81,28 @@ void Game::gameLoopThread() {
 }
 
 void Game::run() {
+    double lastTime = glfwGetTime();
+    int frameCount = 0;
+
     while (!glfwWindowShouldClose(window)) {
+        // FPS counter
+        frameCount++;
+
+        double currentTime = glfwGetTime();
+        double delta = currentTime - lastTime;
+
+        if (delta >= 1.0) {
+            double fps = frameCount / delta;
+
+            std::string title =
+                "TerraClone - FPS: " + std::to_string(static_cast<int>(fps));
+
+            glfwSetWindowTitle(window, title.c_str());
+
+            frameCount = 0;
+            lastTime = currentTime;
+        }
+
         // Autosave every 5 minutes
         auto now = std::chrono::steady_clock::now();
         if (std::chrono::duration_cast<std::chrono::minutes>(now - lastAutoSave).count() >= 5) {
@@ -333,6 +354,7 @@ void Game::updateBuffers(const CameraParams &cam) {
             renderer.destroyMesh("inventory");
         }
 
+// TODO: Check why performance tanks by 50% when drawing fonts.
         std::vector<VlkRenderer::TextDrawCall> textCalls;
         for (int i = 0; i < INVENTORY_SLOTS; ++i) {
             if (!player.inventory.slots[i].empty()) {
