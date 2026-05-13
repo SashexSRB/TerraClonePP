@@ -36,7 +36,7 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
 
     player.position = {
         spawnX * Constants::TileSize,
-        (spawnTileY - 3) * Constants::TileSize
+        (spawnTileY - 4) * Constants::TileSize
     };
 
     CameraParams cam = computeCameraParams(
@@ -195,7 +195,7 @@ void Game::handleInput() {
         player, world,
         renderer.swapChainExtent.width,
         renderer.swapChainExtent.height,
-        32.0f, 100.0f
+        Constants::TileSize, Constants::VisibleTilesX
     );
 
     double xpos, ypos;
@@ -208,7 +208,7 @@ void Game::handleInput() {
         xpos, ypos, cam,
         renderer.swapChainExtent.width,
         renderer.swapChainExtent.height,
-        32.0f
+        Constants::TileSize
     );
 
     glm::vec2 playerCenter = {
