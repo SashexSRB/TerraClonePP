@@ -15,8 +15,8 @@
     constexpr bool BINARY_SAVE = false;
 #endif
 
-const std::string SAVE_PATH_BIN = ASSET_PATH "../Saves/world.tcw";
-const std::string SAVE_PATH_TXT = ASSET_PATH "../Saves/world.tcw.txt";
+const std::string SAVE_PATH_BIN = ASSET_PATH "/Saves/world.tcw";
+const std::string SAVE_PATH_TXT = ASSET_PATH "/Saves/world.tcw.txt";
 
 VulkanApp app;
 
@@ -36,7 +36,7 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
 
     player.position = {
         spawnX * Constants::TileSize,
-        (spawnTileY - 2) * Constants::TileSize
+        (spawnTileY - 3) * Constants::TileSize
     };
 
     CameraParams cam = computeCameraParams(
@@ -212,8 +212,8 @@ void Game::handleInput() {
     );
 
     glm::vec2 playerCenter = {
-        player.position.x + Constants::TileSize / 2.0f,
-        player.position.y + Constants::TileSize / 2.0f
+        player.position.x + Constants::PlayerWidth / 2.0f,
+        player.position.y + Constants::PlayerHeight / 2.0f
     };
 
     glm::vec2 tileCenter = {
@@ -338,12 +338,12 @@ void Game::updateBuffers(const CameraParams &cam) {
 
 void Game::saveWorld() {
     std::string path = BINARY_SAVE ? SAVE_PATH_BIN : SAVE_PATH_TXT;
-    world.save(path, BINARY_SAVE);
+    world.save(path, BINARY_SAVE, player.inventory);
 }
 
 void Game::loadOrGenerateWorld() {
     std::string path = BINARY_SAVE ? SAVE_PATH_BIN : SAVE_PATH_TXT;
-    if (!world.load(path, BINARY_SAVE)) {
+    if (!world.load(path, BINARY_SAVE, player.inventory)) {
         std::cout << "[Game] No save found, generating new world...\n";
         unsigned int seed = static_cast<unsigned int>(
             std::chrono::system_clock::now().time_since_epoch().count()

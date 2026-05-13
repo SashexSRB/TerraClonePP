@@ -26,14 +26,14 @@ glm::ivec2 World::getPlayerChunk(int playerX, int playerY) const {
 
 void TileRegistry::initialize() {
     static const std::vector<TileDefinition> tileDefs = {
-        {0, "Air", 0, 0, false, 0.0f},
-        {1, "Dirt", 1, 0, true, 0.2f},
-        {2, "Stone", 2, 0, true, 0.2f},
-        {3, "Grass", 3, 0, true, 0.2f},
-        {4, "Sand", 7,0, true, 0.2f},
-        {5, "Sandstone", 8,0, true, 0.2f},
-        {6, "Snow", 9,0, true, 0.2f},
-        {7, "Ice", 10,0, true, 0.2f},
+        {0, "Air",       0,0, false, 0.0f},
+        {1, "Dirt",      1,0, true,  0.2f},
+        {2, "Stone",     2,0, true,  0.2f},
+        {3, "Grass",     3,0, true,  0.2f},
+        {4, "Sand",      4,0, true,  0.2f},
+        {5, "Sandstone", 5,0, true,  0.2f},
+        {6, "Snow",      6,0, true,  0.2f},
+        {7, "Ice",       7,0, true,  0.2f},
     };
 
     static const std::vector<TileDefinition> wallDefs = {
@@ -276,7 +276,7 @@ void World::generateChunkVertices(Chunk &chunk, std::vector<Vertex> &vertices, s
     buildMesh(vertices, indices, quads);
 }
 
-void World::save(const std::string &path, bool binary) const {
+void World::save(const std::string &path, bool binary, const Inventory &inventory) const {
     fs::create_directories(fs::path(path).parent_path());
 
     if (binary) {
@@ -300,6 +300,15 @@ void World::save(const std::string &path, bool binary) const {
                 f.write(reinterpret_cast<const char*>(&t.isActive), sizeof(t.isActive));
             }
         }
+
+        // Inventory
+        int activeSlot = inventory.activeSlot.load();
+        f.write(reinterpret_cast<const char*>(&activeSlot), sizeof(activeSlot));
+        for (const auto &slot : inventory.slots) {
+            f.write(reinterpret_cast<const char*>(&slot.tileId), sizeof(slot.tileId));
+            f.write(reinterpret_cast<const char*>(&slot.count),  sizeof(slot.count));
+        }
+
         std::cout << "[World] Saved binary to " << path << "\n";
     } else {
         std::ofstream f(path);
@@ -320,11 +329,20 @@ void World::save(const std::string &path, bool binary) const {
                   << t.isActive << "\n";
             }
         }
+
+        f << "inventory\n";
+        f << "activeSlot " << inventory.activeSlot.load() << "\n";
+        for (int i = 0; i < INVENTORY_SLOTS; ++i) {
+            f << i << " "
+              << inventory.slots[i].tileId << " "
+              << inventory.slots[i].count  << "\n";
+        }
+
         std::cout << "[World] Saved text to " << path << "\n";
     }
 }
 
-bool World::load(const std::string &path, bool binary) {
+bool World::load(const std::string &path, bool binary, Inventory &inventory) {
     if (!fs::exists(path)) return false;
 
     if (binary) {
@@ -364,6 +382,17 @@ bool World::load(const std::string &path, bool binary) {
                 f.read(reinterpret_cast<char*>(&t.isActive), sizeof(t.isActive));
             }
         }
+
+        // Inventory
+        int activeSlot;
+        f.read(reinterpret_cast<char*>(&activeSlot), sizeof(activeSlot));
+        inventory.activeSlot.store(activeSlot);
+
+        for (auto &slot : inventory.slots) {
+            f.read(reinterpret_cast<char*>(&slot.tileId), sizeof(slot.tileId));
+            f.read(reinterpret_cast<char*>(&slot.count),  sizeof(slot.count));
+        }
+
         std::cout << "[World] Loaded binary from " << path << "\n";
     } else {
         std::ifstream f(path);
@@ -385,15 +414,32 @@ bool World::load(const std::string &path, bool binary) {
             return false;
         }
 
-        int x, y;
-        while (f >> x >> y) {
+        // Tiles
+        while (f >> token) {
+            if (token == "inventory") break;
+            int x = std::stoi(token);
+            int y;
+            f >> y;
             Tile &t = tiles[x][y];
             int tileId, wallId, isActive;
             f >> tileId >> wallId >> isActive;
-            t.tileId = static_cast<uint16_t>(tileId);
-            t.wallId = static_cast<uint16_t>(wallId);
+            t.tileId   = static_cast<uint16_t>(tileId);
+            t.wallId   = static_cast<uint16_t>(wallId);
             t.isActive = static_cast<bool>(isActive);
         }
+
+        // Inventory
+        int activeSlot;
+        f >> token >> activeSlot; // "activeSlot N"
+        inventory.activeSlot.store(activeSlot);
+        for (int i = 0; i < INVENTORY_SLOTS; ++i) {
+            int idx, tileId, count;
+            f >> idx >> tileId >> count;
+            inventory.slots[idx].tileId = static_cast<uint32_t>(tileId);
+            inventory.slots[idx].count  = count;
+        }
+
+
         std::cout << "[World] Loaded text from " << path << "\n";
     }
     return true;

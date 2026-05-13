@@ -20,8 +20,8 @@ void generateInventoryVertices(const Inventory &inventory, std::vector<Vertex> &
         quads.push_back({
             x, startY, SLOT_SIZE, SLOT_SIZE, Z_UI + 0.01f,
             isActive
-                ? getTexCoords(6, 0, Constants::AtlasWidth, Constants::AtlasTileSize)
-                : getTexCoords(5, 0, Constants::AtlasWidth, Constants::AtlasTileSize)
+                ? getTexCoords(1, 255, Constants::AtlasWidth, Constants::AtlasTileSize)
+                : getTexCoords(0, 255, Constants::AtlasWidth, Constants::AtlasTileSize)
         });
 
         // Item quad on top if slot is occupied
