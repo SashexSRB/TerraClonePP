@@ -166,11 +166,13 @@ public:
 
     void destroyMesh(const std::string &name);
 
+    void buildTextMesh(const std::vector<TextDrawCall> &calls);
+
     void draw(const std::string &name, VkCommandBuffer commandBuffer);
 
     void drawUI(const std::string &name, VkCommandBuffer commandBuffer);
 
-    void drawText(const std::string &text, float x, float y, glm::vec3 color, VkCommandBuffer commandBuffer);
+    void drawText(VkCommandBuffer commandBuffer);
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 

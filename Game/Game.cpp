@@ -354,7 +354,6 @@ void Game::updateBuffers(const CameraParams &cam) {
             renderer.destroyMesh("inventory");
         }
 
-// TODO: Check why performance tanks by 50% when drawing fonts.
         std::vector<VlkRenderer::TextDrawCall> textCalls;
         for (int i = 0; i < INVENTORY_SLOTS; ++i) {
             if (!player.inventory.slots[i].empty()) {
@@ -370,7 +369,7 @@ void Game::updateBuffers(const CameraParams &cam) {
             }
         }
         renderer.setTextDrawCalls(textCalls);
-
+        renderer.buildTextMesh(textCalls);
     }
     renderer.updateUniformBuffer(0, cam);
 }

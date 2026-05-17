@@ -9,6 +9,8 @@ layout(binding = 0) uniform UniformBufferObject {
 layout(push_constant) uniform PushConstants {
     mat4 proj;
     int useUIProj;  // 1 = use push constant proj, 0 = use UBO
+    int useFont;
+    int _pad[2];
 } push;
 
 layout(location = 0) in vec2 inPosition;
