@@ -762,7 +762,7 @@ void VlkRenderer::createGraphicsPipeline() {
     dynamicState.pDynamicStates = dynamicStates.data();
 
     VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(UIPushConstants);
 
@@ -1047,7 +1047,7 @@ void VlkRenderer::drawUI(const std::string &name, VkCommandBuffer commandBuffer)
     push.proj[3][0] = -1.0f;
     push.proj[3][1] = -1.0f;
 
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &push);
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(UIPushConstants), &push);
 
     VkBuffer vertexBuffers[] = {mesh.vertexBuffer};
     VkDeviceSize offsets[] = {0};
@@ -1058,7 +1058,7 @@ void VlkRenderer::drawUI(const std::string &name, VkCommandBuffer commandBuffer)
     // Reset push constants so world draws use UBO again
     UIPushConstants reset{};
     reset.useUIProj = 0;
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &reset);
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(UIPushConstants), &reset);
 }
 
 void VlkRenderer::drawText(VkCommandBuffer commandBuffer) {
@@ -1075,13 +1075,13 @@ void VlkRenderer::drawText(VkCommandBuffer commandBuffer) {
     push.proj[3][0] = -1.0f;
     push.proj[3][1] = -1.0f;
 
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &push);
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(UIPushConstants), &push);
 
     draw("__text__", commandBuffer);
 
     // Reset push constants
     UIPushConstants reset{};
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &reset);
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(UIPushConstants), &reset);
 }
 
 
