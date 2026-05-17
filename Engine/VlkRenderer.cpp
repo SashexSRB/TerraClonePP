@@ -987,6 +987,37 @@ void VlkRenderer::destroyMesh(const std::string &name) {
     meshes.erase(it);
 }
 
+void VlkRenderer::buildTextMesh(const std::vector<TextDrawCall> &calls) {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    for (const auto &call : calls) {
+        float cx = call.x;
+        float cy = call.y;
+
+        for (char c : call.text) {
+            if (c < 32 || c >= 128) continue;
+            stbtt_aligned_quad q;
+            stbtt_GetBakedQuad(bakedChars.data(), fontAtlasWidth, fontAtlasHeight, c-32, &cx, &cy, &q, 1);
+
+            uint32_t base = static_cast<uint32_t>(vertices.size());
+            vertices.push_back({{q.x0, q.y0}, 0.02f, call.color, {q.s0, q.t0}});
+            vertices.push_back({{q.x1, q.y0}, 0.02f, call.color, {q.s1, q.t0}});
+            vertices.push_back({{q.x1, q.y1}, 0.02f, call.color, {q.s1, q.t1}});
+            vertices.push_back({{q.x0, q.y1}, 0.02f, call.color, {q.s0, q.t1}});
+            indices.insert(indices.end(), {base, base+1, base+2, base+2, base+3, base});
+        }
+    }
+
+    if (vertices.empty()) {
+        destroyMesh("__text__");
+        return;
+    }
+
+    updateVertexBuffer("__text__", vertices);
+    updateIndexBuffer("__text__", indices);
+}
+
 void VlkRenderer::draw(const std::string &name, VkCommandBuffer commandBuffer) {
     auto it = meshes.find(name);
     if (it == meshes.end()) return;
@@ -1030,28 +1061,9 @@ void VlkRenderer::drawUI(const std::string &name, VkCommandBuffer commandBuffer)
     vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &reset);
 }
 
-void VlkRenderer::drawText(const std::string &text, float x, float y, glm::vec3 color, VkCommandBuffer commandBuffer) {
-    std::vector<Vertex> verts;
-    std::vector<uint32_t> idxs;
-
-    float cx = x; float cy = y;
-    for (char c : text) {
-        if (c < 32 || c >= 128) continue;
-        stbtt_aligned_quad q;
-        stbtt_GetBakedQuad(bakedChars.data(), fontAtlasWidth, fontAtlasHeight, c - 32, &cx, &cy, &q, 1);
-
-        uint32_t base = static_cast<uint32_t>(verts.size());
-        verts.push_back({{q.x0, q.y0}, 0.02f, color, {q.s0, q.t0}});
-        verts.push_back({{q.x1, q.y0}, 0.02f, color, {q.s1, q.t0}});
-        verts.push_back({{q.x1, q.y1}, 0.02f, color, {q.s1, q.t1}});
-        verts.push_back({{q.x0, q.y1}, 0.02f, color, {q.s0, q.t1}});
-        idxs.insert(idxs.end(), {base, base+1, base+2, base+2, base+3, base});
-    }
-
-    if (verts.empty()) return;
-
-    updateVertexBuffer("__text__", verts);
-    updateIndexBuffer("__text__", idxs);
+void VlkRenderer::drawText(VkCommandBuffer commandBuffer) {
+    auto it = meshes.find("__text__");
+    if (it == meshes.end() || it->second.indexCount == 0) return;
 
     // push font constants
     UIPushConstants push{};
@@ -1149,9 +1161,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
         draw(key, commandBuffer);
     }
 
-    for (const auto &call : textDrawCalls) {
-        drawText(call.text, call.x, call.y, call.color, commandBuffer);
-    }
+    drawText(commandBuffer);
 
     draw("player", commandBuffer);
     drawUI("inventory", commandBuffer);
