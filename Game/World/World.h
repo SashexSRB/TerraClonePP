@@ -2,6 +2,7 @@
 
 #include "Tile.h"
 #include "Chunk.h"
+#include "Generator.h"
 #include "../../Engine/Vertex.h"
 #include "../UI/Inventory.h"
 
@@ -11,7 +12,7 @@
 
 class World {
 private:
-    std::vector<std::vector<Tile> > tiles;
+    std::vector<std::vector<Tile>> tiles;
     int width, height;
 
 public:
