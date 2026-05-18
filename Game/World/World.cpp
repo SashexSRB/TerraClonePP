@@ -37,8 +37,8 @@ void TileRegistry::initialize() {
     };
 
     static const std::vector<TileDefinition> wallDefs = {
-        {0, "None", 0, 1, false, 1.0f},
-        {1, "StoneWall", 1, 1, false, 1.0f},
+        {0, "None",      0,1, false, 1.0f},
+        {1, "StoneWall", 1,1, false, 1.0f},
     };
 
     for (const auto &def: tileDefs) {
@@ -314,7 +314,7 @@ void World::save(const std::string &path, bool binary, const Inventory &inventor
         std::ofstream f(path);
         if (!f) throw std::runtime_error("Failed to open save file: " + path);
 
-        f << "TCW 1/n";
+        f << "TCW 1\n";
         f << "width "  << width  << "\n";
         f << "height " << height << "\n";
         f << "seed "   << seed   << "\n";
