@@ -159,12 +159,12 @@ void Generator::paintTerrain(World& world) {
             surfaceHeight[x];
 
         int dirtDepth =
-            4 +
+            20 +
             static_cast<int>(
                 terrainNoise.noise2D_01(
                     x * 0.05,
                     500.0
-                ) * 5
+                ) * 25
             );
 
         const auto& weights =
