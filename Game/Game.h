@@ -55,6 +55,9 @@ private:
     std::mutex worldMutex;
     std::mutex renderMutex;
 
+    float mineTimer = 0.0f;
+    glm::ivec2 miningTile = {-1, -1};
+
     CameraParams computeCameraParams(const Player &player, const World &world,
                                      int windowWidth, int windowHeight,
                                      float tileSize, float visibleTilesX);

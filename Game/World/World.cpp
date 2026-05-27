@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "../Constants.h"
+#include "../Items/Item.h"
 #include "../Rendering/MeshUtils.h"
 #include "../../Lib/PerlinNoise.hpp"
 
@@ -13,48 +14,12 @@
 
 namespace fs = std::filesystem;
 
-std::unordered_map<uint16_t, TileProperties> TileRegistry::tileTypes;
-std::unordered_map<uint16_t, TileProperties> TileRegistry::wallTypes;
-
 int64_t World::chunkKey(int x, int y) {
     return (static_cast<int64_t>(x) << 32) | static_cast<uint32_t>(y);
 }
 
 glm::ivec2 World::getPlayerChunk(int playerX, int playerY) const {
     return {playerX / chunkSize, playerY / chunkSize};
-}
-
-void TileRegistry::initialize() {
-    static const std::vector<TileDefinition> tileDefs = {
-        {0, "Air",       0,0, false, 0.0f},
-        {1, "Dirt",      1,0, true,  0.2f},
-        {2, "Stone",     2,0, true,  0.2f},
-        {3, "Grass",     3,0, true,  0.2f},
-        {4, "Sand",      4,0, true,  0.2f},
-        {5, "Sandstone", 5,0, true,  0.2f},
-        {6, "Snow",      6,0, true,  0.2f},
-        {7, "Ice",       7,0, true,  0.2f},
-    };
-
-    static const std::vector<TileDefinition> wallDefs = {
-        {0, "None",      0,1, false, 1.0f},
-        {1, "StoneWall", 1,1, false, 1.0f},
-    };
-
-    for (const auto &def: tileDefs) {
-        tileTypes[def.id] = {
-            def.name, {def.texX, def.texY}, def.isSolid, def.zValue
-        };
-    }
-
-    for (const auto &def: wallDefs) {
-        wallTypes[def.id] = {
-            def.name,
-            {def.texX, def.texY},
-            def.isSolid,
-            def.zValue,
-        };
-    }
 }
 
 World::World(int w, int h) : width(w), height(h) {
@@ -146,20 +111,18 @@ void World::generateChunkVertices(Chunk &chunk, std::vector<Vertex> &vertices, s
             float wy = (chunk.chunkY * chunkSize + ty) * Constants::TileSize;
 
             if (tile.wallId != 0) {
-                const TileProperties &props = TileRegistry::wallTypes[tile.wallId];
+                const GameItem &item = Registry::getWall(tile.wallId);
                 quads.push_back({
-                    wx, wy, Constants::TileSize, Constants::TileSize, props.zValue,
-                    getTexCoords(props.texCoord.x, props.texCoord.y,
-                                 Constants::AtlasWidth, Constants::AtlasTileSize)
+                    wx, wy, Constants::TileSize, Constants::TileSize, item.zValue,
+                    getTexCoords(item.texX, item.texY, Constants::AtlasWidth, Constants::AtlasTileSize)
                 });
             }
 
             if (tile.isActive) {
-                const TileProperties &props = TileRegistry::tileTypes[tile.tileId];
+                const GameItem &item = Registry::get(tile.tileId);
                 quads.push_back({
-                    wx, wy, Constants::TileSize, Constants::TileSize, props.zValue,
-                    getTexCoords(props.texCoord.x, props.texCoord.y,
-                                 Constants::AtlasWidth, Constants::AtlasTileSize)
+                    wx, wy, Constants::TileSize, Constants::TileSize, item.zValue,
+                    getTexCoords(item.texX, item.texY, Constants::AtlasWidth, Constants::AtlasTileSize)
                 });
             }
         }
@@ -197,7 +160,7 @@ void World::save(const std::string &path, bool binary, const Inventory &inventor
         int activeSlot = inventory.activeSlot.load();
         f.write(reinterpret_cast<const char*>(&activeSlot), sizeof(activeSlot));
         for (const auto &slot : inventory.slots) {
-            f.write(reinterpret_cast<const char*>(&slot.tileId), sizeof(slot.tileId));
+            f.write(reinterpret_cast<const char*>(&slot.itemId), sizeof(slot.itemId));
             f.write(reinterpret_cast<const char*>(&slot.count),  sizeof(slot.count));
         }
 
@@ -226,7 +189,7 @@ void World::save(const std::string &path, bool binary, const Inventory &inventor
         f << "activeSlot " << inventory.activeSlot.load() << "\n";
         for (int i = 0; i < INVENTORY_SLOTS; ++i) {
             f << i << " "
-              << inventory.slots[i].tileId << " "
+              << inventory.slots[i].itemId << " "
               << inventory.slots[i].count  << "\n";
         }
 
@@ -281,7 +244,7 @@ bool World::load(const std::string &path, bool binary, Inventory &inventory) {
         inventory.activeSlot.store(activeSlot);
 
         for (auto &slot : inventory.slots) {
-            f.read(reinterpret_cast<char*>(&slot.tileId), sizeof(slot.tileId));
+            f.read(reinterpret_cast<char*>(&slot.itemId), sizeof(slot.itemId));
             f.read(reinterpret_cast<char*>(&slot.count),  sizeof(slot.count));
         }
 
@@ -327,7 +290,7 @@ bool World::load(const std::string &path, bool binary, Inventory &inventory) {
         for (int i = 0; i < INVENTORY_SLOTS; ++i) {
             int idx, tileId, count;
             f >> idx >> tileId >> count;
-            inventory.slots[idx].tileId = static_cast<uint32_t>(tileId);
+            inventory.slots[idx].itemId = static_cast<uint32_t>(tileId);
             inventory.slots[idx].count  = count;
         }
 

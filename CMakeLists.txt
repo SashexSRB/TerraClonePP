@@ -20,6 +20,8 @@ add_executable(TerraClonePP
         ${GAME_SOURCES}
         Game/World/Generator.h
         Game/World/Generator.cpp
+        Game/Items/Item.h
+        Game/Items/Item.cpp
 )
 
 # ─── Include paths ──────────────────────────────────────────────────────────

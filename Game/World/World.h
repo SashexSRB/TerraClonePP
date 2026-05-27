@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Tile.h"
 #include "Chunk.h"
 #include "Generator.h"
 #include "../../Engine/Vertex.h"
