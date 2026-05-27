@@ -1,6 +1,7 @@
 #include "Inventory.h"
 #include "../Rendering/MeshUtils.h"
 #include "../World/Tile.h"
+#include "../Items/Item.h"
 #include "../Constants.h"
 
 static constexpr float SLOT_SIZE = 40.0f;
@@ -26,11 +27,12 @@ void generateInventoryVertices(const Inventory &inventory, std::vector<Vertex> &
 
         // Item quad on top if slot is occupied
         if (!inventory.slots[i].empty()) {
-            const TileProperties &props = TileRegistry::tileTypes[inventory.slots[i].tileId];
+            uint32_t itemId = inventory.slots[i].itemId;
+            const GameItem &item = Registry::get(itemId);
 
             quads.push_back({
                 x + 4.0f, startY + 4.0f, SLOT_SIZE - 8.0f, SLOT_SIZE - 8.0f, Z_UI,
-                getTexCoords(props.texCoord.x, props.texCoord.y, Constants::AtlasWidth, Constants::AtlasTileSize)
+                getTexCoords(item.texX, item.texY, Constants::AtlasWidth, Constants::AtlasTileSize)
             });
         }
     }

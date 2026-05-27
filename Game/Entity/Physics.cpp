@@ -1,6 +1,7 @@
 #include "Physics.h"
 
 #include "Constants.h"
+#include "Items/Item.h"
 
 void applyMovement(Player &player, const InputState &input, float deltaTime) {
     player.velocity.x = 0.0f;
@@ -58,8 +59,8 @@ void resolveCollisions(Player &player, World &world, float deltaTime) {
 
         Tile &tile = world.getTile(x, y);
 
-        return (tile.isActive && TileRegistry::tileTypes[tile.tileId].isSolid) ||
-               (tile.wallId != 0 && TileRegistry::wallTypes[tile.wallId].isSolid);
+        return (tile.isActive && Registry::get(tile.tileId).isSolid) ||
+               (tile.wallId != 0 && Registry::getWall(tile.wallId).isSolid);
     };
 
     // Horizontal collision

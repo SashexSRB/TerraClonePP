@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "Constants.h"
 #include "Entity/Physics.h"
+#include "Items/Item.h"
 #include "../VulkanApp.h"
 
 #include <iostream>
@@ -252,33 +253,75 @@ void Game::handleInput() {
 
     if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) player.inventory.activeSlot = 9;
 
-    // Left click: remove tile
+    // Left click: mine or place
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && inReach) {
         if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
             tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
+
             Tile t = world.getTile(tileCoords.x, tileCoords.y);
-            if (t.isActive && TileRegistry::tileTypes[t.tileId].isSolid) {
-                player.inventory.addItem(t.tileId, 1);
-                t.isActive = false;
-                world.setTile(tileCoords.x, tileCoords.y, t);
+            int      activeSlot = player.inventory.activeSlot.load();
+            uint32_t itemId     = player.inventory.slots[activeSlot].itemId;
+            const GameItem *item = Registry::isValid(itemId)
+                ? &Registry::get(itemId) : nullptr;
+
+            if (t.isActive) {
+                const GameItem &tileItem = Registry::get(t.tileId);
+
+                bool correctTool = false;
+                bool enoughPower = true;
+
+                if (item && item->itemType == ItemType::Tool) {
+                    switch (tileItem.breakType) {
+                        case TileBreakType::Pickaxe:
+                            correctTool = (item->toolType == ToolType::Pickaxe); break;
+                        case TileBreakType::Axe:
+                            correctTool = (item->toolType == ToolType::Axe);     break;
+                        case TileBreakType::Hammer:
+                            correctTool = (item->toolType == ToolType::Hammer);  break;
+                        case TileBreakType::None:
+                            correctTool = false; break;
+                    }
+                    enoughPower = (item->toolPower >= tileItem.requiredPower);
+                }
+
+                if (correctTool && enoughPower) {
+                    if (tileCoords != miningTile) {
+                        mineTimer  = 0.0f;
+                        miningTile = tileCoords;
+                    }
+
+                    static auto lastMine = std::chrono::high_resolution_clock::now();
+                    auto now = std::chrono::high_resolution_clock::now();
+                    float dt = std::chrono::duration<float>(now - lastMine).count();
+                    lastMine = now;
+
+                    mineTimer += dt;
+                    if (mineTimer >= tileItem.breakTime / item->toolSpeed) {
+                        player.inventory.addItem(t.tileId, 1);
+                        t.isActive = false;
+                        world.setTile(tileCoords.x, tileCoords.y, t);
+                        mineTimer  = 0.0f;
+                        miningTile = {-1, -1};
+                    }
+                } else {
+                    mineTimer  = 0.0f;
+                    miningTile = {-1, -1};
+                }
+            } else {
+                // Placing
+                if (item && item->itemType == ItemType::Tile) {
+                    t.tileId   = static_cast<uint16_t>(item->id);
+                    t.isActive = true;
+                    world.setTile(tileCoords.x, tileCoords.y, t);
+                    player.inventory.removeItem(activeSlot);
+                }
+                mineTimer  = 0.0f;
+                miningTile = {-1, -1};
             }
         }
-    }
-
-    // Right click: place tile
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS && inReach) {
-        if (tileCoords.x >= 0 && tileCoords.x < world.getWidth() &&
-            tileCoords.y >= 0 && tileCoords.y < world.getHeight()) {
-            Tile t = world.getTile(tileCoords.x, tileCoords.y);
-            int activeSlot = player.inventory.activeSlot;
-
-            if (!t.isActive && player.inventory.hasItemInSlot(activeSlot)) {
-                t.tileId = player.inventory.slots[activeSlot].tileId;
-                t.isActive = true;
-                world.setTile(tileCoords.x, tileCoords.y, t);
-                player.inventory.removeItem(activeSlot);
-            }
-        }
+    } else {
+        mineTimer  = 0.0f;
+        miningTile = {-1, -1};
     }
 }
 
@@ -387,5 +430,9 @@ void Game::loadOrGenerateWorld() {
             std::chrono::system_clock::now().time_since_epoch().count()
         );
         world.generate(seed);
+
+        player.inventory.addItem(1002, 1); // Copper Sword
+        player.inventory.addItem(1000, 1); // Copper Pickaxe
+        player.inventory.addItem(1001, 1); // Copper Axe
     }
 }

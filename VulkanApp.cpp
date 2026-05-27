@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
+#include "Items/Item.h"
+
 VulkanApp::VulkanApp() : window(nullptr), game(nullptr) { }
 VulkanApp::~VulkanApp() {}
 
@@ -61,7 +63,7 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createCommandBuffers();
     vlkRenderer.createSyncObjects();
 
-    TileRegistry::initialize();
+    Registry::initialize();
 
     game = new Game(window, vlkRenderer);
 }

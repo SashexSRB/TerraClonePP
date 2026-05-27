@@ -10,7 +10,7 @@ constexpr int INVENTORY_SLOTS = 10;
 constexpr int MAX_STACK_SIZE  = 999;
 
 struct ItemStack {
-    uint32_t tileId = 0;
+    uint32_t itemId = 0;
     int      count  = 0;
     bool     empty() const { return count <= 0; }
 };
@@ -19,10 +19,10 @@ struct Inventory {
     std::array<ItemStack, INVENTORY_SLOTS> slots;
     std::atomic<int> activeSlot = 0;
 
-    void addItem(uint32_t tileId, int count) {
+    void addItem(uint32_t itemId, int count) {
         // First try to stack onto existing slot with same tile.
         for (auto &slot : slots) {
-            if (!slot.empty() && slot.tileId == tileId) {
+            if (!slot.empty() && slot.itemId == itemId) {
                 slot.count = std::min(slot.count + count, MAX_STACK_SIZE);
                 return;
             }
@@ -31,7 +31,7 @@ struct Inventory {
         // Otherwise find first empty slot
         for (auto &slot : slots) {
             if (slot.empty()) {
-                slot.tileId = tileId;
+                slot.itemId = itemId;
                 slot.count = std::min(count, MAX_STACK_SIZE);
                 return;
             }
