@@ -399,6 +399,8 @@ void Game::updateBuffers(const CameraParams &cam) {
 
         std::vector<VlkRenderer::TextDrawCall> textCalls;
         for (int i = 0; i < INVENTORY_SLOTS; ++i) {
+            if (player.inventory.slots[i].itemId == 1000 || player.inventory.slots[i].itemId == 1001 || player.inventory.slots[i].itemId == 1002) continue;
+
             if (!player.inventory.slots[i].empty()) {
                 float x = Constants::InventoryPadding + i * (Constants::InventorySlotSize + Constants::InventoryPadding);
                 float y = Constants::InventoryPadding;
