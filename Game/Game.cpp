@@ -305,7 +305,7 @@ void Game::handleInput() {
                 }
             } else {
                 // Placing
-                if (item && item->itemType == ItemType::Tile) {
+                if (item && item->itemType == ItemType::Tile && item->id != 0) {
                     t.tileId   = static_cast<uint16_t>(item->id);
                     t.isActive = true;
                     world.setTile(tileCoords.x, tileCoords.y, t);
