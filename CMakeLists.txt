@@ -18,16 +18,6 @@ add_executable(TerraClonePP
         VulkanApp.cpp
         ${ENGINE_SOURCES}
         ${GAME_SOURCES}
-        Game/World/Generator.h
-        Game/World/Generator.cpp
-        Game/Items/Item.h
-        Game/Items/Item.cpp
-        Game/World/ChunkManager.h
-        Game/World/ChunkManager.cpp
-        Game/World/ChunkMesher.cpp
-        Game/World/ChunkMesher.h
-        Game/World/WorldSerializer.cpp
-        Game/World/WorldSerializer.h
 )
 
 # ─── Include paths ──────────────────────────────────────────────────────────
