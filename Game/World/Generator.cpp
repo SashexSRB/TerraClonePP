@@ -10,133 +10,106 @@ Generator::Generator(unsigned int seed)
       caveNoise(seed + 2)
 {}
 
-static const std::array<BiomeData, 3> biomeTable = {{
+static const BiomeData biomeTable[] = {
     {3,1,0.0030f,0.012f,60.f,15.f}, // forest
     {4,5,0.0025f,0.010f,35.f, 8.f}, // desert
     {6,7,0.0035f,0.014f,90.f,25.f}  // snow
-}};
+};
 
-void Generator::generate(World& world) {
-    biomeMap.resize(world.getWidth());
-    surfaceHeight.resize(world.getWidth());
-
-    generateBiomeMap(world);
-    generateHeightMap(world);
-
-    paintTerrain(world);
-
-    generateCaves(world);
-
-    // optional:
-    // smoothCaves(world, 2);
+const BiomeData& Generator::getBiomeData(Biome biome) const {
+    return biomeTable[static_cast<int>(biome)];
 }
 
-void Generator::generateBiomeMap(World& world) {
-    const float biomeFreq = 0.0007f;
+void Generator::initSegments(int w) {
+    int center = w / 2;
+    segments.clear();
 
-    for (int x = 0; x < world.getWidth(); ++x) {
-        float desertNoise = biomeNoise.octave2D_01(x * biomeFreq, 1000.0, 3);
-        float forestNoise = biomeNoise.octave2D_01(x * biomeFreq, 2000.0, 3);
-        float snowNoise   = biomeNoise.octave2D_01(x * biomeFreq, 3000.0, 3);
+    // Left side
+    segments.push_back({Biome::Forest, 0,   w/8,    3});
+    segments.push_back({Biome::Snow,   w/8, w/3,    4});
+    segments.push_back({Biome::Forest, w/3, center, 2});
 
-        float total = desertNoise + forestNoise + snowNoise;
+    // Right side
+    segments.push_back({Biome::Forest, center, w*2/3, 2});
+    segments.push_back({Biome::Desert, w*2/3,  w*7/8, 4});
+    segments.push_back({Biome::Forest, w*7/8,  w,     3});
+}
 
-        biomeMap[x] = {
-            forestNoise / total,
-            desertNoise / total,
-            snowNoise / total
-        };
+Biome Generator::getBiomeAt(int x) const {
+    Biome best = Biome::Forest;
+    int bestPriority = -1;
+
+    for (const auto& s : segments) {
+        if (x < s.startX || x > s.endX) continue;
+
+        if (s.priority > bestPriority) {
+            bestPriority = s.priority;
+            best = s.biome;
+        }
     }
+
+    return best;
+}
+
+void Generator::generate(World& world) {
+    int w = world.getWidth();
+    int h = world.getHeight();
+
+    surfaceHeight.resize(world.getWidth());
+    initSegments(w);
+
+    generateHeightMap(world);
+    paintTerrain(world);
+    generateCaves(world);
 }
 
 void Generator::generateHeightMap(World& world) {
-    const int groundLevel = world.getHeight() / 2;
+    int w = world.getWidth();
+    int h = world.getHeight();
 
-    auto sampleTerrain = [&](int x, const BiomeData& data) {
-        double base   = terrainNoise.octave2D_01(x * data.baseFreq,  0.0,  4) * 2.0 - 1.0;
-        double detail = terrainNoise.octave2D_01(x * data.detailFreq,100.0,2) * 2.0 - 1.0;
+    const int groundLevel = h / 2;
 
-        return base * data.baseAmplitude + detail * data.detailAmplitude;
-    };
+    for (int x = 0; x < w; ++x) {
+        Biome b = getBiomeAt(x);
+        const BiomeData& d = getBiomeData(b);
 
-    for (int x = 0; x < world.getWidth(); ++x) {
-        const auto& weights = biomeMap[x];
+        double base = terrainNoise.octave2D_01(x * d.baseFreq, 0.0, 4) * 2.0 - 1.0;
+        double detail = terrainNoise.octave2D_01(x * d.detailFreq, 100.0, 2) * 2.0 - 1.0;
 
-        float forest = sampleTerrain(x, getBiomeData(Biome::Forest));
-        float desert = sampleTerrain(x, getBiomeData(Biome::Desert));
-        float snow   = sampleTerrain(x, getBiomeData(Biome::Snow));
+        const int height = groundLevel + static_cast<int>(base * d.baseAmplitude + detail * d.detailAmplitude);
 
-        int finalHeight = groundLevel + static_cast<int>(
-            forest * weights.forest +
-            desert * weights.desert +
-            snow * weights.snow
-        );
-
-        surfaceHeight[x] = std::clamp(
-            finalHeight,
-            10,
-            world.getHeight() - 10
-        );
+        surfaceHeight[x] = std::clamp(height, 10, h - 10);
     }
 }
 
-Biome Generator::getDominantBiome(int x) const {
-    const auto& w = biomeMap[x];
-    if (w.forest > w.desert && w.forest > w.snow) return Biome::Forest;
-    if (w.desert > w.snow) return Biome::Desert;
-    return Biome::Snow;
-}
-
 void Generator::paintTerrain(World& world) {
-    for (int x = 0; x < world.getWidth(); ++x) {
-        Biome dominant = getDominantBiome(x);
+    int w = world.getWidth();
+    int h = world.getHeight();
 
-        const auto& data = getBiomeData(dominant);
+    for (int x = 0; x < w; ++x) {
+        Biome b = getBiomeAt(x);
+        const BiomeData& d = getBiomeData(b);
+
         int terrainHeight = surfaceHeight[x];
 
-        int dirtDepth = 20 + static_cast<int>(
-            terrainNoise.noise2D_01(x * 0.05, 500.0) * 25
-        );
-
-        const auto& weights = biomeMap[x];
-
-        bool transition = std::max({
-            weights.forest,
-            weights.desert,
-            weights.snow
-        }) < 0.75f;
-
-        for (int y = 0; y < world.getHeight(); ++y) {
-            Tile& tile = world.getTile(x, y);
+        for (int y = 0; y < h; ++y) {
+            Tile& t = world.getTile(x, y);
 
             if (y < terrainHeight) {
-                tile.tileId = 0;
-                tile.isActive = false;
+                t.tileId = 0;
+                t.isActive = false;
             } else if (y == terrainHeight) {
-                tile.tileId =data.surfaceTile;
-                if (transition) {
-                    double scatter = biomeNoise.noise2D_01(
-                        x * 0.08,
-                        y * 0.08
-                    );
-
-                    if (scatter > 0.65) {
-                        if (weights.forest > 0.3f) tile.tileId = 3;
-                        else if (weights.desert > 0.3f) tile.tileId = 4;
-                        else tile.tileId = 6;
-                    }
-                }
-
-                tile.isActive = true;
-            } else if (y < terrainHeight + dirtDepth) {
-                tile.tileId = data.subsurfaceTile;
-                tile.isActive = true;
+                t.tileId = d.surfaceTile;
+                t.isActive = true;
+            } else if (y < terrainHeight + 20) {
+                t.tileId = d.subsurfaceTile;
+                t.isActive = true;
             } else {
-                tile.tileId = 2;
-                tile.isActive = true;
+                t.tileId = 2;
+                t.isActive = true;
             }
 
-            tile.wallId = (y >= terrainHeight) ? 100 : 0;
+            t.wallId = (y >= terrainHeight) ? 100 : 0;
         }
     }
 }
@@ -199,82 +172,8 @@ void Generator::generateCaves(World& world) {
     }
 }
 
-int Generator::countSolidNeighbors(World& world, int x, int y) const {
-    int count = 0;
-
-    for (int ox = -1; ox <= 1; ++ox) {
-        for (int oy = -1; oy <= 1; ++oy) {
-
-            if (ox == 0 && oy == 0) continue;
-
-            int nx = x + ox;
-            int ny = y + oy;
-
-            if (nx < 0 || ny < 0 || nx >= world.getWidth() || ny >= world.getHeight()) {
-                count++;
-                continue;
-            }
-
-            if (world.getTile(nx, ny).isActive) count++;
-        }
-    }
-
-    return count;
-}
-
-void Generator::smoothCaves(World& world, int iterations) {
-    const int width =world.getWidth();
-    const int height =world.getHeight();
-
-    std::vector<uint8_t> solid(width * height);
-
-    for (int i = 0; i < iterations; ++i) {
-        for (int x = 0; x < width; ++x) {
-            for (int y = 0; y < height; ++y) {
-
-                int neighbors = countSolidNeighbors(
-                    world,
-                    x,
-                    y
-                );
-
-                bool current = world.getTile(x, y).isActive;
-
-                bool next;
-
-                if (neighbors > 5)
-                    next = true;
-
-                else if (neighbors < 3)
-                    next = false;
-
-                else
-                    next = current;
-
-                solid[x + y * width] = next;
-            }
-        }
-
-        for (int x = 0; x < width; ++x) {
-            for (int y = 0; y < height; ++y) {
-                bool active = solid[x + y * width];
-
-                Tile& tile = world.getTile(x, y);
-
-                tile.isActive = active;
-
-                if (!active) tile.tileId = 0;
-            }
-        }
-    }
-}
-
 bool Generator::isSolid(World& world, int x, int y) const {
     if (x < 0 || y < 0 || x >= world.getWidth() || y >= world.getHeight()) return true;
 
     return world.getTile(x, y).isActive;
-}
-
-const BiomeData& Generator::getBiomeData(Biome biome) const {
-    return biomeTable[static_cast<int>(biome)];
 }
