@@ -11,6 +11,7 @@
 #include <mutex>
 #include <thread>
 #include <chrono>
+#include <condition_variable>
 
 #include "Rendering/MeshUtils.h"
 
@@ -18,6 +19,12 @@ struct InputState {
     std::atomic<bool> left  = {false};
     std::atomic<bool> right = {false};
     std::atomic<bool> jump  = {false};
+};
+
+struct MeshResult {
+    std::string key;
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
 };
 
 class Game {
@@ -41,6 +48,17 @@ public:
     void loadOrGenerateWorld();
 
     std::chrono::steady_clock::time_point lastAutoSave;
+
+    // Threading
+    std::thread meshThread;
+    std::mutex meshQueueMutex;
+    std::mutex meshResultMutex;
+    std::condition_variable meshCV;
+    std::vector<Chunk> meshQueue;
+    std::vector<MeshResult> meshResults;
+    std::atomic<bool> meshThreadRunning{true};
+
+    void meshWorkerThread();
 
 private:
     InputState inputState;
@@ -83,4 +101,6 @@ private:
     void updateBuffers(const CameraParams &cam);
 
     void gameLoopThread();
+
+    bool isChunkVisible(int chunkX, int chunkY, const CameraParams& cam) const;
 };

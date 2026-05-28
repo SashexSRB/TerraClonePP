@@ -47,14 +47,21 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
 
     std::cout << "[Game] Starting physics thread...\n";
     physicsThread = std::thread(&Game::gameLoopThread, this);
+    std::cout << "[Game] Starting mesh thread...\n";
+    meshThread = std::thread(&Game::meshWorkerThread, this);
 }
 
 Game::~Game() {
-    std::cout << "[Game] Stopping physics thread...\n";
     running = false;
     if (physicsThread.joinable())
         physicsThread.join();
     std::cout << "[Game] Physics thread stopped.\n";
+
+    meshThreadRunning = false;
+    meshCV.notify_all();
+    if (meshThread.joinable())
+        meshThread.join();
+    std::cout << "[Game] Mesh thread stopped.\n";
 }
 
 void Game::gameLoopThread() {
@@ -130,9 +137,7 @@ void Game::run() {
     }
 
     if (physicsThread.joinable()) {
-        std::cout << "[Game] waiting for physics thread to exit...\n";
         physicsThread.join();
-        std::cout << "[Game] Physics thread exited cleanly.\n";
     }
 }
 
@@ -344,7 +349,9 @@ void Game::onScroll(double yoffset) {
 void Game::updateBuffers(const CameraParams &cam) {
     int playerTileX = static_cast<int>(player.position.x / 32.0f);
     int playerTileY = static_cast<int>(player.position.y / 32.0f);
-    bool chunksChanged = world.chunks.update(playerTileX, playerTileY, 2);
+
+    bool chunksChanged = world.chunks.update(playerTileX, playerTileY, 3);
+
     {
         std::lock_guard<std::mutex> lock(renderMutex);
 
@@ -364,36 +371,49 @@ void Game::updateBuffers(const CameraParams &cam) {
                 renderer.destroyMesh(key);
         }
 
-        // Update only dirty chunks
-        std::vector<Vertex> chunkVerts;
-        std::vector<uint32_t> chunkIndices;
-        for (auto &kv : world.chunks.getChunks()) {
-            Chunk &chunk = kv.second;
-            if (!chunk.needsUpdate) continue;
-
-            ChunkMesher::mesh(chunk, chunkVerts, chunkIndices, world.chunks.getChunkSize(), meshScratch);
-            std::string key = world.chunks.meshKey(chunk.chunkX, chunk.chunkY);
-
-            if (chunkVerts.empty() || chunkIndices.empty()) {
-                renderer.destroyMesh(key);
+        // Queue dirty chunks for off-thread meshing
+        {
+            std::lock_guard<std::mutex> qlock(meshQueueMutex);
+            for (auto &kv : world.chunks.getChunks()) {
+                Chunk &chunk = kv.second;
+                if (!chunk.needsUpdate) continue;
+                meshQueue.push_back(chunk); // copy for thread safety
                 chunk.needsUpdate = false;
-                continue;
+            }
+            if (!meshQueue.empty())
+                meshCV.notify_one();
+        }
+
+        // Upload completed meshes to GPU
+        {
+            std::vector<MeshResult> ready;
+            {
+                std::lock_guard<std::mutex> rlock(meshResultMutex);
+                ready = std::move(meshResults);
+                meshResults.clear();
             }
 
-            renderer.updateVertexBuffer(key, chunkVerts);
-            renderer.updateIndexBuffer(key, chunkIndices);
-            chunk.needsUpdate = false;
+            for (auto &result : ready) {
+                if (result.vertices.empty() || result.indices.empty()) {
+                    renderer.destroyMesh(result.key);
+                    continue;
+                }
+                renderer.updateVertexBuffer(result.key, result.vertices);
+                renderer.updateIndexBuffer(result.key, result.indices);
+            }
         }
 
-        // Push chunk keys to the renderer.
-        if (chunksChanged) {
-            cachedChunkKeys.clear();
-            cachedChunkKeys.reserve(world.chunks.getChunks().size());
-            for (auto &kv : world.chunks.getChunks())
-                cachedChunkKeys.push_back(world.chunks.meshKey(kv.second.chunkX, kv.second.chunkY));
-            renderer.setChunkKeys(cachedChunkKeys);
+        // Rebuild visible chunk keys every frame for frustum culling
+        cachedChunkKeys.clear();
+        cachedChunkKeys.reserve(world.chunks.getChunks().size());
+        for (auto &kv : world.chunks.getChunks()) {
+            const Chunk &chunk = kv.second;
+            if (isChunkVisible(chunk.chunkX, chunk.chunkY, cam))
+                cachedChunkKeys.push_back(world.chunks.meshKey(chunk.chunkX, chunk.chunkY));
         }
+        renderer.setChunkKeys(cachedChunkKeys);
 
+        // Player mesh
         if (playerMeshDirty) {
             generatePlayerVertices(player, playerVertices, playerIndices);
             renderer.updateVertexBuffer("player", playerVertices);
@@ -401,6 +421,7 @@ void Game::updateBuffers(const CameraParams &cam) {
             playerMeshDirty = false;
         }
 
+        // Inventory and text mesh
         if (inventoryMeshDirty) {
             generateInventoryVertices(player.inventory, inventoryVertices, inventoryIndices);
             if (!inventoryVertices.empty() && !inventoryIndices.empty()) {
@@ -412,7 +433,9 @@ void Game::updateBuffers(const CameraParams &cam) {
 
             std::vector<VlkRenderer::TextDrawCall> textCalls;
             for (int i = 0; i < INVENTORY_SLOTS; ++i) {
-                if (player.inventory.slots[i].itemId == 1000 || player.inventory.slots[i].itemId == 1001 || player.inventory.slots[i].itemId == 1002) continue;
+                if (player.inventory.slots[i].itemId == 1000 ||
+                    player.inventory.slots[i].itemId == 1001 ||
+                    player.inventory.slots[i].itemId == 1002) continue;
 
                 if (!player.inventory.slots[i].empty()) {
                     float x = Constants::InventoryPadding + i * (Constants::InventorySlotSize + Constants::InventoryPadding);
@@ -428,10 +451,10 @@ void Game::updateBuffers(const CameraParams &cam) {
             }
             renderer.setTextDrawCalls(textCalls);
             renderer.buildTextMesh(textCalls);
-
             inventoryMeshDirty = false;
         }
     }
+
     renderer.updateUniformBuffer(renderer.currentFrame, cam);
 }
 
@@ -450,5 +473,48 @@ void Game::loadOrGenerateWorld() {
         player.inventory.addItem(1002, 1); // Copper Sword
         player.inventory.addItem(1000, 1); // Copper Pickaxe
         player.inventory.addItem(1001, 1); // Copper Axe
+    }
+}
+
+bool Game::isChunkVisible(int chunkX, int chunkY, const CameraParams &cam) const {
+    float chunkWorldSize = world.chunks.getChunkSize() * Constants::TileSize;
+
+    float minX = chunkX * chunkWorldSize;
+    float minY = chunkY * chunkWorldSize;
+    float maxX = minX + chunkWorldSize;
+    float maxY = minY + chunkWorldSize;
+
+    float camMinX = cam.position.x - cam.visibleWidth / 2.0f;
+    float camMinY = cam.position.y - cam.visibleHeight / 2.0f;
+    float camMaxX = cam.position.x + cam.visibleWidth / 2.0f;
+    float camMaxY = cam.position.y + cam.visibleHeight / 2.0f;
+
+    return maxX >= camMinX && minX <= camMaxX &&
+           maxY >= camMinY && minY <= camMaxY;
+}
+
+void Game::meshWorkerThread() {
+    std::vector<QuadSpec> scratch;
+
+    while (meshThreadRunning) {
+        std::vector<Chunk> batch;
+
+        {
+            std::unique_lock<std::mutex> lock(meshQueueMutex);
+            meshCV.wait(lock, [this] {
+                return !meshQueue.empty() || !meshThreadRunning;
+            });
+            batch = std::move(meshQueue);
+            meshQueue.clear();
+        }
+
+        for (auto& chunk : batch) {
+            MeshResult result;
+            result.key = ChunkManager::meshKey(chunk.chunkX, chunk.chunkY);
+            ChunkMesher::mesh(chunk, result.vertices, result.indices, world.chunks.getChunkSize(), scratch);
+
+            std::lock_guard<std::mutex> lock(meshResultMutex);
+            meshResults.push_back(std::move(result));
+        }
     }
 }
