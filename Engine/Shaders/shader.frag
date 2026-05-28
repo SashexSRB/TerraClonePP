@@ -16,17 +16,22 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     if (push.useFont == 1) {
-        vec2 fontSample = texture(fontSampler, fragTexCoord).rg;
-        float outline = fontSample.r;
-        float glyph   = fontSample.g;
+        float dist = texture(fontSampler, fragTexCoord).r;
+        float width = clamp(fwidth(dist), 0.0, 0.05);
 
-        // Outline is dark, glyph is the text color
+        // Inner glyph fill
+        float alpha = smoothstep(0.5 - width, 0.5 + width, dist);
+
+        // Outline — sample a wider band below the edge
+        float outlineWidth = 0.15;  // tweak this to make outline thicker/thinner
+        float outline = smoothstep(0.5 - outlineWidth - width, 0.5 - outlineWidth + width, dist);
+
+        // Composite: outline color underneath, text color on top
         vec3 outlineColor = vec3(0.0, 0.0, 0.0);
-        vec4 outlinePixel = vec4(outlineColor, outline);
-        vec4 glyphPixel   = vec4(fragColor, glyph);
+        vec3 finalColor = mix(outlineColor, fragColor.rgb, alpha);
+        float finalAlpha = max(alpha, outline);
 
-        // Blend — glyph on top of outline
-        outColor = mix(outlinePixel, glyphPixel, glyph);
+        outColor = vec4(finalColor, finalAlpha);
     } else {
         outColor = texture(texSampler, fragTexCoord);
     }

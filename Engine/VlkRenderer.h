@@ -76,6 +76,24 @@ public:
         glm::vec3 color;
     };
 
+    struct SDFGlyph {
+        float u0, v0, u1, v1;   // UV in atlas
+        float xoff, yoff;
+        float xadvance;
+        int width, height;
+    };
+
+    struct SDFFont {
+        VkImage image;
+        VkImageView view;
+        VkSampler sampler;
+
+        int atlasWidth;
+        int atlasHeight;
+
+        std::array<SDFGlyph, 96> glyphs; // ASCII 32–127
+    };
+
     std::unordered_map<std::string, MeshBuffer> meshes;
 
     // Vulkan Datatype Variables
@@ -96,6 +114,7 @@ public:
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
+    VkPipeline uiPipeline;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool;
     std::vector<VkBuffer> uniformBuffers;
@@ -257,4 +276,5 @@ public:
 private:
     std::vector<std::string> chunkKeys;
     std::vector<TextDrawCall> textDrawCalls;
+    SDFFont sdfFont;
 };

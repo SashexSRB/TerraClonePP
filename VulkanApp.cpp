@@ -96,6 +96,7 @@ void VulkanApp::cleanup() {
 
     vkDestroyDescriptorSetLayout(vlkRenderer.device, vlkRenderer.descriptorSetLayout, nullptr);
 
+    vkDestroyPipeline(vlkRenderer.device, vlkRenderer.uiPipeline, nullptr);
     vkDestroyPipeline(vlkRenderer.device, vlkRenderer.graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(vlkRenderer.device, vlkRenderer.pipelineLayout, nullptr);
 
