@@ -2,16 +2,15 @@
 
 #include "Entity/Player.h"
 #include "World/World.h"
-#include "../Engine/VlkRenderer.h"
-#include "../Include/CameraParams.h"
+#include "Engine/VlkRenderer.h"
+#include "Include/CameraParams.h"
+#include "World/WorldSerializer.h"
 
 #include <GLFW/glfw3.h>
 #include <atomic>
 #include <mutex>
 #include <thread>
 #include <chrono>
-
-#include "World/WorldSerializer.h"
 
 struct InputState {
     std::atomic<bool> left  = {false};

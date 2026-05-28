@@ -2,7 +2,6 @@
 
 #include "Chunk.h"
 #include <unordered_map>
-#include <cstdint>
 #include <string>
 #include <glm/glm.hpp>
 

@@ -1,22 +1,9 @@
 #include "World.h"
-
-#include <cstring>
-
-#include "../Constants.h"
-#include "../Items/Item.h"
-#include "../Rendering/MeshUtils.h"
-#include "../../Lib/PerlinNoise.hpp"
-
-#include <unordered_map>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
+#include "Generator.h"
 
 World::World(int w, int h) : chunks(*this, 64), width(w), height(h) {
     tiles.resize(w, std::vector<Tile>(h));
 }
-
-namespace fs = std::filesystem;
 
 Tile &World::getTile(int x, int y) {
     return tiles[x][y];

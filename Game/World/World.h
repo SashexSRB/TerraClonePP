@@ -2,12 +2,6 @@
 
 #include "Chunk.h"
 #include "ChunkManager.h"
-#include "Generator.h"
-#include "Engine/Vertex.h"
-#include "UI/Inventory.h"
-
-#include <string>
-#include <unordered_map>
 #include <vector>
 
 class World {

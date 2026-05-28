@@ -1,8 +1,6 @@
 #include "ChunkManager.h"
-
-#include <chrono>
-
 #include "World.h"
+#include <chrono>
 
 ChunkManager::ChunkManager(World& world, int chunkSize) : world(world), chunkSize(chunkSize) {}
 

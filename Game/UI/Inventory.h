@@ -1,9 +1,8 @@
 #pragma once
 
-#include "../../Engine/Vertex.h"
+#include "Engine/Vertex.h"
 #include <vector>
 #include <array>
-#include <cstdint>
 #include <atomic>
 
 constexpr int INVENTORY_SLOTS = 10;
