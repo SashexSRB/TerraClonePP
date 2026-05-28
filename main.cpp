@@ -1,7 +1,5 @@
-#include <cstdlib>
-#include <iostream>
-
 #include "VulkanApp.h"
+#include <iostream>
 
 int main() {
     VulkanApp app;
@@ -10,8 +8,8 @@ int main() {
         app.run();
     } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
+        return 1;
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
