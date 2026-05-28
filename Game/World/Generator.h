@@ -19,10 +19,11 @@ struct BiomeData {
     float detailAmplitude;
 };
 
-struct BiomeWeights {
-    float forest;
-    float desert;
-    float snow;
+struct BiomeSegment {
+    Biome biome;
+    int startX;
+    int endX;
+    int priority;
 };
 
 class Generator {
@@ -33,28 +34,25 @@ public:
 
 private:
     unsigned int seed;
+
     siv::PerlinNoise terrainNoise;
     siv::PerlinNoise biomeNoise;
     siv::PerlinNoise caveNoise;
 
-    std::vector<BiomeWeights> biomeMap;
+    std::vector<BiomeSegment> segments;
     std::vector<int> surfaceHeight;
 
-    void generateBiomeMap(World& world);
+    void initSegments(int worldWidth);
+    Biome getBiomeAt(int x) const;
+    const BiomeData& getBiomeData(Biome biome) const;
+
+
     void generateHeightMap(World& world);
-
     void paintTerrain(World& world);
-
     void generateCaves(World& world);
-    void smoothCaves(World& world, int iterations);
 
-    void generateOres(World& world);
-    void generateDecorations(World& world);
+    // void generateOres(World& world);
+    // void generateDecorations(World& world);
 
     bool isSolid(World& world, int x, int y) const;
-    int countSolidNeighbors(World& world, int x, int y) const;
-
-    Biome getDominantBiome(int x) const;
-
-    const BiomeData& getBiomeData(Biome biome) const;;
 };
