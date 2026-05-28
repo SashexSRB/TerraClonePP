@@ -20,7 +20,7 @@ namespace ChunkMesher {
                 const float wy = static_cast<float>(chunk.chunkY * chunkSize + ty) * Constants::TileSize;
 
                 if (tile.wallId != 0) {
-                    const GameItem& item = Registry::getWall(tile.wallId);
+                    const GameItem& item = Registry::get(tile.wallId);
                     quads.push_back({
                         wx, wy, Constants::TileSize, Constants::TileSize, item.zValue,
                         getTexCoords(item.texX, item.texY, Constants::AtlasWidth, Constants::AtlasTileSize)

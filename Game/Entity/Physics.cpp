@@ -59,7 +59,7 @@ void resolveCollisions(Player &player, World &world, float deltaTime) {
         Tile &tile = world.getTile(x, y);
 
         return (tile.isActive && Registry::get(tile.tileId).isSolid) ||
-               (tile.wallId != 0 && Registry::getWall(tile.wallId).isSolid);
+               (tile.wallId != 0 && Registry::get(tile.wallId).isSolid);
     };
 
     // Horizontal collision

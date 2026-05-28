@@ -38,7 +38,7 @@ struct GameItem {
     int           texX          = 0;
     int           texY          = 0;
 
-    // Tile/Wall properties (only if itemType == Tile or Wall)
+    // Item properties (only if itemType == Tile or Wall)
     bool          isSolid       = false;
     float         zValue        = 0;
     TileBreakType breakType     = TileBreakType::None;
@@ -58,9 +58,7 @@ struct GameItem {
 class Registry {
 public:
     static std::unordered_map<uint32_t, GameItem> items;
-    static std::unordered_map<uint16_t, GameItem> wallItems;
     static void initialize();
     static const GameItem& get(uint32_t id);
-    static const GameItem& getWall(uint16_t id);
     static bool isValid(uint32_t id);
 };

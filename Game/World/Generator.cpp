@@ -136,7 +136,7 @@ void Generator::paintTerrain(World& world) {
                 tile.isActive = true;
             }
 
-            tile.wallId = (y >= terrainHeight) ? 1 : 0;
+            tile.wallId = (y >= terrainHeight) ? 100 : 0;
         }
     }
 }
