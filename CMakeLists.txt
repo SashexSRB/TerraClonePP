@@ -102,7 +102,7 @@ add_dependencies(TerraClonePP Shaders)
 
 # ─── Textures ───────────────────────────────────────────────────────────────
 
-set(TEXTURE_SOURCE ${CMAKE_SOURCE_DIR}/Game/Textures/textures.png)
+set(TEXTURE_SOURCE ${CMAKE_SOURCE_DIR}/Game/Assets/Textures/textures.png)
 set(TEXTURE_DEST   ${CMAKE_BINARY_DIR}/textures.png)
 
 add_custom_command(
@@ -116,7 +116,7 @@ add_custom_target(Textures ALL DEPENDS ${TEXTURE_DEST})
 add_dependencies(TerraClonePP Textures)
 
 # ─── Fonts ───────────────────────────────────────────────────────────────
-set(FONT_SOURCE ${CMAKE_SOURCE_DIR}/Assets/Fonts/ANDYB.TTF)
+set(FONT_SOURCE ${CMAKE_SOURCE_DIR}/Game/Assets/Fonts/ANDYB.TTF)
 set(FONT_DEST   ${CMAKE_BINARY_DIR}/ANDYB.TTF)
 
 add_custom_command(
