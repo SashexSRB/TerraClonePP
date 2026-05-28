@@ -11,6 +11,8 @@
 #include <thread>
 #include <chrono>
 
+#include "World/WorldSerializer.h"
+
 struct InputState {
     std::atomic<bool> left  = {false};
     std::atomic<bool> right = {false};
@@ -57,6 +59,8 @@ private:
 
     float mineTimer = 0.0f;
     glm::ivec2 miningTile = {-1, -1};
+
+    WorldSerializer serializer;
 
     CameraParams computeCameraParams(const Player &player, const World &world,
                                      int windowWidth, int windowHeight,
