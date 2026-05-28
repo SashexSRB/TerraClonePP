@@ -1,11 +1,10 @@
 #include "VulkanApp.h"
 #include "Game/Game.h"
+#include "Items/Item.h"
 
 #include <iostream>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
-
-#include "Items/Item.h"
 
 VulkanApp::VulkanApp() : window(nullptr), game(nullptr) { }
 VulkanApp::~VulkanApp() {}

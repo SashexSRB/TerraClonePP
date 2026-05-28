@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Lib/PerlinNoise.hpp"
+#include "Lib/PerlinNoise.hpp"
 
 class World;
 

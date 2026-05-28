@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-#include <glm/glm.hpp>
 
 enum class ItemType : uint8_t {
     None,

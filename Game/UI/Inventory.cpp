@@ -1,8 +1,7 @@
 #include "Inventory.h"
-#include "../Rendering/MeshUtils.h"
-#include "../World/Tile.h"
-#include "../Items/Item.h"
-#include "../Constants.h"
+#include "Rendering/MeshUtils.h"
+#include "Items/Item.h"
+#include "Constants.h"
 
 static constexpr float SLOT_SIZE = 40.0f;
 static constexpr float PADDING   = 4.0f;

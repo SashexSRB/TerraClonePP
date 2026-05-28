@@ -1,9 +1,8 @@
 #pragma once
 
-#include "../Constants.h"
-#include "../UI/Inventory.h"
+#include "Constants.h"
+#include "UI/Inventory.h"
 #include <glm/glm.hpp>
-
 
 struct Player {
     glm::vec2 position = {0.0f, 0.0f};
