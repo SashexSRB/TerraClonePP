@@ -732,12 +732,15 @@ void VlkRenderer::createGraphicsPipeline() {
     colorBlendAttachment.colorWriteMask =
             VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
     colorBlendAttachment.blendEnable = VK_TRUE;
+
     colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+
     colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     VkPipelineColorBlendStateCreateInfo colorBlending{};
@@ -796,9 +799,26 @@ void VlkRenderer::createGraphicsPipeline() {
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
         throw std::runtime_error("Failed to create graphics pipeline!");
 
+    std::cout << "OK: Graphics Pipeline created!\n";
+
+    // ── UI pipeline (depth test OFF) ─────────────────────────────────────────
+    VkPipelineDepthStencilStateCreateInfo uiDepthStencil{};
+    uiDepthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    uiDepthStencil.depthTestEnable = VK_FALSE;
+    uiDepthStencil.depthWriteEnable = VK_FALSE;
+    uiDepthStencil.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+    uiDepthStencil.depthBoundsTestEnable = VK_FALSE;
+    uiDepthStencil.stencilTestEnable = VK_FALSE;
+
+    pipelineInfo.pDepthStencilState = &uiDepthStencil;
+
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &uiPipeline) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create UI pipeline!");
+
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
-    std::cout << "OK: Graphics Pipeline created!\n";
+
+    std::cout << "OK: UI Graphics Pipeline created!\n";
 }
 
 void VlkRenderer::createFramebuffers() {
@@ -991,21 +1011,33 @@ void VlkRenderer::buildTextMesh(const std::vector<TextDrawCall> &calls) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
-    for (const auto &call : calls) {
-        float cx = call.x;
-        float cy = call.y;
+    for (const auto& call : calls) {
+        float x = call.x;
+        float y = call.y;
 
         for (char c : call.text) {
             if (c < 32 || c >= 128) continue;
-            stbtt_aligned_quad q;
-            stbtt_GetBakedQuad(bakedChars.data(), fontAtlasWidth, fontAtlasHeight, c-32, &cx, &cy, &q, 1);
 
-            uint32_t base = static_cast<uint32_t>(vertices.size());
-            vertices.push_back({{q.x0, q.y0}, 0.02f, call.color, {q.s0, q.t0}});
-            vertices.push_back({{q.x1, q.y0}, 0.02f, call.color, {q.s1, q.t0}});
-            vertices.push_back({{q.x1, q.y1}, 0.02f, call.color, {q.s1, q.t1}});
-            vertices.push_back({{q.x0, q.y1}, 0.02f, call.color, {q.s0, q.t1}});
-            indices.insert(indices.end(), {base, base+1, base+2, base+2, base+3, base});
+            const SDFGlyph& g = sdfFont.glyphs[c - 32];
+
+            float gx = x + g.xoff;
+            float gy = y + g.yoff;  // yoff is negative = above baseline, pulls text up
+            float w = g.width;
+            float h = g.height;
+
+            uint32_t base = (uint32_t)vertices.size();
+
+            vertices.push_back({ {gx,     gy},     0.0f, call.color, {g.u0, g.v0} });
+            vertices.push_back({ {gx + w, gy},     0.0f, call.color, {g.u1, g.v0} });
+            vertices.push_back({ {gx + w, gy + h}, 0.0f, call.color, {g.u1, g.v1} });
+            vertices.push_back({ {gx,     gy + h}, 0.0f, call.color, {g.u0, g.v1} });
+
+            indices.insert(indices.end(), {
+                base, base + 1, base + 2,
+                base + 2, base + 3, base
+            });
+
+            x += g.xadvance;
         }
     }
 
@@ -1125,7 +1157,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
     renderPassInfo.renderArea.extent = swapChainExtent;
 
     std::array<VkClearValue, 2> clearValues = {};
-    clearValues[0].color = {{0.27f, 0.51f, 0.71f, 1.0f}}; // DEFAULT SKY COLOR
+    clearValues[0].color = {{0.27f, 0.51f, 0.71f, 1.0f}};
     clearValues[1].depthStencil = {1.0f, 0};
 
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -1133,6 +1165,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+    // ── World pipeline (depth ON) ─────────────────────────────────────────
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
     VkViewport viewport{};
@@ -1161,10 +1194,25 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
         draw(key, commandBuffer);
     }
 
-    drawText(commandBuffer);
-
     draw("player", commandBuffer);
+
+    // ── UI pipeline (depth OFF) ───────────────────────────────────────────
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, uiPipeline);
+
+    // viewport and scissor are dynamic so we need to set them again
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        pipelineLayout, 0,
+        1, &descriptorSets[currentFrame],
+        0, nullptr
+    );
+
     drawUI("inventory", commandBuffer);
+    drawText(commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
 
@@ -1506,84 +1554,137 @@ void VlkRenderer::createSampler() {
         throw std::runtime_error("Failed to create texture sampler!");
 }
 
-void VlkRenderer::createFontTexture(const std::string &fontPath, int fontSize) {
-    // load font file
+void VlkRenderer::createFontTexture(const std::string& fontPath, int fontSize)
+{
     std::ifstream file(fontPath, std::ios::binary | std::ios::ate);
-    if (!file) throw std::runtime_error("Failed to open font: " + fontPath);
-    size_t fileSize = file.tellg();
+    if (!file) throw std::runtime_error("Failed to open font");
+
+    size_t size = file.tellg();
     file.seekg(0);
-    std::vector<unsigned char> fontBuffer(fileSize);
-    file.read(reinterpret_cast<char*>(fontBuffer.data()), fileSize);
 
-    // bake font atlas
-    const int atlasW = 512, atlasH = 512;
-    std::vector<unsigned char> bitmap(atlasW * atlasH);
+    std::vector<unsigned char> fontBuffer(size);
+    file.read((char*)fontBuffer.data(), size);
 
-    stbtt_BakeFontBitmap(fontBuffer.data(), 0, static_cast<float>(fontSize), bitmap.data(), atlasW, atlasH, 32, 96, bakedChars.data());
+    stbtt_fontinfo font;
+    if (!stbtt_InitFont(&font,
+        fontBuffer.data(),
+        stbtt_GetFontOffsetForIndex(fontBuffer.data(), 0)))
+        throw std::runtime_error("Font init failed");
 
-    // Build outline bitmap — 2-channel: R = outline, G = glyph
-    const int outlineRadius = 1;
-    std::vector<unsigned char> combined(atlasW * atlasH * 2, 0);
+    const int W = 512;
+    const int H = 512;
 
-    for (int y = 0; y < atlasH; ++y) {
-        for (int x = 0; x < atlasW; ++x) {
-            unsigned char glyph = bitmap[y * atlasW + x];
-            combined[(y * atlasW + x) * 2 + 1] = glyph; // G = glyph
+    std::vector<unsigned char> atlas(W * H, 0);
 
-            // Check neighbors for outline
-            if (glyph == 0) {
-                bool nearGlyph = false;
-                for (int dy = -outlineRadius; dy <= outlineRadius && !nearGlyph; ++dy) {
-                    for (int dx = -outlineRadius; dx <= outlineRadius && !nearGlyph; ++dx) {
-                        int nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && nx < atlasW && ny >= 0 && ny < atlasH)
-                            if (bitmap[ny * atlasW + nx] > 0)
-                                nearGlyph = true;
-                    }
-                }
-                if (nearGlyph)
-                    combined[(y * atlasW + x) * 2 + 0] = 255; // R = outline
-            }
+    float scale = stbtt_ScaleForPixelHeight(&font, (float)fontSize);
+
+    int penX = 1;
+    int penY = 1;
+    int rowH = 0;
+
+    for (int c = 32; c < 128; c++)
+    {
+        int gw, gh, xoff, yoff;
+
+        unsigned char* sdf = stbtt_GetGlyphSDF(
+            &font,
+            scale,
+            stbtt_FindGlyphIndex(&font, c),
+            4, 128, 32.0f,
+            &gw, &gh,
+            &xoff, &yoff
+        );
+
+        if (!sdf) continue;
+
+        if (penX + gw >= W)
+        {
+            penX = 1;
+            penY += rowH + 1;
+            rowH = 0;
         }
+
+        if (penY + gh >= H)
+            throw std::runtime_error("Font atlas too small");
+
+        for (int y = 0; y < gh; y++)
+        for (int x = 0; x < gw; x++)
+            atlas[(penY + y) * W + (penX + x)] =
+                sdf[y * gw + x];
+
+        stbtt_FreeSDF(sdf, nullptr);
+
+        SDFGlyph& g = sdfFont.glyphs[c - 32];
+
+        g.u0 = (float)penX / W;
+        g.v0 = (float)penY / H;
+        g.u1 = (float)(penX + gw) / W;
+        g.v1 = (float)(penY + gh) / H;
+
+        g.xoff = (float)xoff;
+        g.yoff = (float)yoff;
+
+        int advanceWidth, lsb;
+        stbtt_GetCodepointHMetrics(&font, c, &advanceWidth, &lsb);
+        g.xadvance = advanceWidth * scale;
+
+        g.width = gw;
+        g.height = gh;
+
+        penX += gw + 1;
+        rowH = std::max(rowH, gh);
     }
 
-    // Upload to Vulkan as R8_UNORM
-    VkDeviceSize imageSize = atlasW * atlasH * 2;
+    sdfFont.atlasWidth = W;
+    sdfFont.atlasHeight = H;
+
+    VkDeviceSize imageSize = W * H;
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingMemory;
+
     createBuffer(
-        imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        imageSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         stagingBuffer, stagingMemory
     );
 
-    void *data;
+    void* data;
     vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data);
-    memcpy(data, combined.data(), imageSize);
+    memcpy(data, atlas.data(), imageSize);
     vkUnmapMemory(device, stagingMemory);
 
     createImage(
-        atlasW, atlasH,
-        VK_FORMAT_R8G8_UNORM,
+        W, H,
+        VK_FORMAT_R8_UNORM,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         fontImage, fontImageMemory
     );
 
-    transitionImageLayout(fontImage, VK_FORMAT_R8G8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    transitionImageLayout(
+        fontImage,
+        VK_FORMAT_R8_UNORM,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
 
-    copyBufferToImage(stagingBuffer, fontImage, atlasW, atlasH);
+    copyBufferToImage(stagingBuffer, fontImage, W, H);
 
-    transitionImageLayout(fontImage, VK_FORMAT_R8G8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    transitionImageLayout(
+        fontImage,
+        VK_FORMAT_R8_UNORM,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingMemory, nullptr);
 
-    fontImageView = createImageView(fontImage, VK_FORMAT_R8G8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+    fontImageView = createImageView(fontImage, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    // Font sampler - linear for smooth text
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -1591,14 +1692,9 @@ void VlkRenderer::createFontTexture(const std::string &fontPath, int fontSize) {
     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
 
-    if (vkCreateSampler(device, &samplerInfo, nullptr, &fontSampler) != VK_SUCCESS) {
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &fontSampler) != VK_SUCCESS)
         throw std::runtime_error("Failed to create font sampler!");
-    }
 
-    fontAtlasHeight = atlasH;
-    fontAtlasWidth = atlasW;
-
-    std::cout << "OK: Font texture created!\n";
+    std::cout << "OK: SDF Font texture created!\n";
 }
