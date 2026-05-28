@@ -7,8 +7,8 @@
 #include "Rendering/MeshUtils.h"
 
 namespace ChunkMesher {
-    void mesh(const Chunk& chunk, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, int chunkSize) {
-        std::vector<QuadSpec> quads;
+    void mesh(const Chunk& chunk, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, int chunkSize, std::vector<QuadSpec>& quads) {
+        quads.clear();
 
         for (int tx = 0; tx < chunkSize; ++tx) {
             for (int ty = 0; ty < chunkSize; ++ty) {

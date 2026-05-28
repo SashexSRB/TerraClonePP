@@ -137,8 +137,11 @@ void Game::run() {
 }
 
 void Game::update(float deltaTime) {
+    glm::vec2 prevPos = player.position;
     applyMovement(player, inputState, deltaTime);
     resolveCollisions(player, world, deltaTime);
+    if (player.position != prevPos)
+        playerMeshDirty = true;
 }
 
 CameraParams Game::computeCameraParams(const Player &player, const World &world,
@@ -244,10 +247,16 @@ void Game::handleInput() {
 
     // Slot selection 1-9 (0 for slot 10)
     for (int i = 0; i < 9; ++i) {
-        if (glfwGetKey(window, GLFW_KEY_1 + i) == GLFW_PRESS) player.inventory.activeSlot = i;
+        if (glfwGetKey(window, GLFW_KEY_1 + i) == GLFW_PRESS) {
+            player.inventory.activeSlot = i;
+            inventoryMeshDirty = true;
+        }
     }
 
-    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) player.inventory.activeSlot = 9;
+    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) {
+        player.inventory.activeSlot = 9;
+        inventoryMeshDirty = true;
+    }
 
     // Left click: mine or place
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && inReach) {
@@ -298,6 +307,7 @@ void Game::handleInput() {
                         world.setTile(tileCoords.x, tileCoords.y, t);
                         mineTimer  = 0.0f;
                         miningTile = {-1, -1};
+                        inventoryMeshDirty = true;
                     }
                 } else {
                     mineTimer  = 0.0f;
@@ -310,6 +320,7 @@ void Game::handleInput() {
                     t.isActive = true;
                     world.setTile(tileCoords.x, tileCoords.y, t);
                     player.inventory.removeItem(activeSlot);
+                    inventoryMeshDirty = true;
                 }
                 mineTimer  = 0.0f;
                 miningTile = {-1, -1};
@@ -326,6 +337,8 @@ void Game::onScroll(double yoffset) {
         player.inventory.activeSlot = (player.inventory.activeSlot - 1 + INVENTORY_SLOTS) % INVENTORY_SLOTS;
     else if (yoffset < 0)
         player.inventory.activeSlot = (player.inventory.activeSlot + 1) % INVENTORY_SLOTS;
+
+    inventoryMeshDirty = true;
 }
 
 void Game::updateBuffers(const CameraParams &cam) {
@@ -358,7 +371,7 @@ void Game::updateBuffers(const CameraParams &cam) {
             Chunk &chunk = kv.second;
             if (!chunk.needsUpdate) continue;
 
-            ChunkMesher::mesh(chunk, chunkVerts, chunkIndices, world.chunks.getChunkSize());
+            ChunkMesher::mesh(chunk, chunkVerts, chunkIndices, world.chunks.getChunkSize(), meshScratch);
             std::string key = world.chunks.meshKey(chunk.chunkX, chunk.chunkY);
 
             if (chunkVerts.empty() || chunkIndices.empty()) {
@@ -373,46 +386,53 @@ void Game::updateBuffers(const CameraParams &cam) {
         }
 
         // Push chunk keys to the renderer.
-        std::vector<std::string> keys;
-        keys.reserve(world.chunks.getChunks().size());
-        for (auto &kv : world.chunks.getChunks())
-            keys.push_back(world.chunks.meshKey(kv.second.chunkX, kv.second.chunkY));
-
-        renderer.setChunkKeys(keys);
-
-        // Always rebuild player and inventory every frame
-        generatePlayerVertices(player, playerVertices, playerIndices);
-        renderer.updateVertexBuffer("player", playerVertices);
-        renderer.updateIndexBuffer("player", playerIndices);
-
-        generateInventoryVertices(player.inventory, inventoryVertices, inventoryIndices);
-        if (!inventoryVertices.empty() && !inventoryIndices.empty()) {
-            renderer.updateVertexBuffer("inventory", inventoryVertices);
-            renderer.updateIndexBuffer("inventory", inventoryIndices);
-        } else {
-            renderer.destroyMesh("inventory");
+        if (chunksChanged) {
+            cachedChunkKeys.clear();
+            cachedChunkKeys.reserve(world.chunks.getChunks().size());
+            for (auto &kv : world.chunks.getChunks())
+                cachedChunkKeys.push_back(world.chunks.meshKey(kv.second.chunkX, kv.second.chunkY));
+            renderer.setChunkKeys(cachedChunkKeys);
         }
 
-        std::vector<VlkRenderer::TextDrawCall> textCalls;
-        for (int i = 0; i < INVENTORY_SLOTS; ++i) {
-            if (player.inventory.slots[i].itemId == 1000 || player.inventory.slots[i].itemId == 1001 || player.inventory.slots[i].itemId == 1002) continue;
+        if (playerMeshDirty) {
+            generatePlayerVertices(player, playerVertices, playerIndices);
+            renderer.updateVertexBuffer("player", playerVertices);
+            renderer.updateIndexBuffer("player", playerIndices);
+            playerMeshDirty = false;
+        }
 
-            if (!player.inventory.slots[i].empty()) {
-                float x = Constants::InventoryPadding + i * (Constants::InventorySlotSize + Constants::InventoryPadding);
-                float y = Constants::InventoryPadding;
-                std::string countStr = std::to_string(player.inventory.slots[i].count);
-                textCalls.push_back({
-                    countStr,
-                    x + Constants::InventorySlotSize - 4.0f * countStr.size(),
-                    y + Constants::InventorySlotSize - 4.0f,
-                    {1.0f, 1.0f, 1.0f}
-                });
+        if (inventoryMeshDirty) {
+            generateInventoryVertices(player.inventory, inventoryVertices, inventoryIndices);
+            if (!inventoryVertices.empty() && !inventoryIndices.empty()) {
+                renderer.updateVertexBuffer("inventory", inventoryVertices);
+                renderer.updateIndexBuffer("inventory", inventoryIndices);
+            } else {
+                renderer.destroyMesh("inventory");
             }
+
+            std::vector<VlkRenderer::TextDrawCall> textCalls;
+            for (int i = 0; i < INVENTORY_SLOTS; ++i) {
+                if (player.inventory.slots[i].itemId == 1000 || player.inventory.slots[i].itemId == 1001 || player.inventory.slots[i].itemId == 1002) continue;
+
+                if (!player.inventory.slots[i].empty()) {
+                    float x = Constants::InventoryPadding + i * (Constants::InventorySlotSize + Constants::InventoryPadding);
+                    float y = Constants::InventoryPadding;
+                    std::string countStr = std::to_string(player.inventory.slots[i].count);
+                    textCalls.push_back({
+                        countStr,
+                        x + Constants::InventorySlotSize - 4.0f * countStr.size(),
+                        y + Constants::InventorySlotSize - 4.0f,
+                        {1.0f, 1.0f, 1.0f}
+                    });
+                }
+            }
+            renderer.setTextDrawCalls(textCalls);
+            renderer.buildTextMesh(textCalls);
+
+            inventoryMeshDirty = false;
         }
-        renderer.setTextDrawCalls(textCalls);
-        renderer.buildTextMesh(textCalls);
     }
-    renderer.updateUniformBuffer(0, cam);
+    renderer.updateUniformBuffer(renderer.currentFrame, cam);
 }
 
 void Game::saveWorld() {
