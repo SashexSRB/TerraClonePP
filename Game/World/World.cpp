@@ -2,19 +2,19 @@
 #include "Generator.h"
 
 World::World(int w, int h) : chunks(*this, 64), width(w), height(h) {
-    tiles.resize(w, std::vector<Tile>(h));
+    tiles.resize(w * h);
 }
 
 Tile &World::getTile(int x, int y) {
-    return tiles[x][y];
+    return tiles[x + y * width];
 }
 
 const Tile &World::getTile(int x, int y) const {
-    return tiles[x][y];
+    return tiles[x + y * width];
 }
 
 void World::setTile(int x, int y, Tile t) {
-    tiles[x][y] = t;
+    tiles[x + y * width] = t;
     chunks.markDirty(x, y);
 
     // sync into loaded chunk copy

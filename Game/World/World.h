@@ -21,7 +21,7 @@ public:
 
     ChunkManager chunks;
 private:
-    std::vector<std::vector<Tile>> tiles;
+    std::vector<Tile> tiles;
     int width, height;
     unsigned int seed = 0;
 };

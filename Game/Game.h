@@ -12,6 +12,8 @@
 #include <thread>
 #include <chrono>
 
+#include "Rendering/MeshUtils.h"
+
 struct InputState {
     std::atomic<bool> left  = {false};
     std::atomic<bool> right = {false};
@@ -50,6 +52,12 @@ private:
 
     std::vector<Vertex> inventoryVertices;
     std::vector<uint32_t> inventoryIndices;
+
+    bool playerMeshDirty = true;
+    bool inventoryMeshDirty = true;
+    std::vector<std::string> cachedChunkKeys;
+
+    std::vector<QuadSpec> meshScratch;
 
     std::atomic<bool> running{true};
     std::thread physicsThread;
