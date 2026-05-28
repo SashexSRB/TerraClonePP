@@ -2,7 +2,8 @@
 #include "Constants.h"
 #include "Entity/Physics.h"
 #include "Items/Item.h"
-#include "../VulkanApp.h"
+#include "VulkanApp.h"
+#include "World/ChunkMesher.h"
 
 #include <iostream>
 #include <algorithm>
@@ -10,19 +11,14 @@
 #include <unordered_set>
 #include <glm/gtc/matrix_transform.hpp>
 
-#ifdef NDEBUG
-    constexpr bool BINARY_SAVE = true;
-#else
-    constexpr bool BINARY_SAVE = false;
-#endif
-
-const std::string SAVE_PATH_BIN = ASSET_PATH "/Saves/world.tcw";
-const std::string SAVE_PATH_TXT = ASSET_PATH "/Saves/world.tcw.txt";
-
 VulkanApp app;
 
+const std::string SAVE_PATH = ASSET_PATH "/Saves/world.tcw";
+
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
-    : renderer(renderer), window(window), world(8400, 2400), lastAutoSave(std::chrono::steady_clock::now()) {
+    : renderer(renderer), window(window),
+      world(8400, 2400), serializer(SAVE_PATH),
+      lastAutoSave(std::chrono::steady_clock::now()) {
 
     loadOrGenerateWorld();
 
@@ -335,15 +331,15 @@ void Game::onScroll(double yoffset) {
 void Game::updateBuffers(const CameraParams &cam) {
     int playerTileX = static_cast<int>(player.position.x / 32.0f);
     int playerTileY = static_cast<int>(player.position.y / 32.0f);
-    bool chunksChanged = world.updateChunks(playerTileX, playerTileY, 2);
+    bool chunksChanged = world.chunks.update(playerTileX, playerTileY, 2);
     {
         std::lock_guard<std::mutex> lock(renderMutex);
 
         // Clean up GPU buffers for chunks that are no longer loaded
         if (chunksChanged) {
             std::unordered_set<std::string> validKeys;
-            for (auto &kv : world.loadedChunks)
-                validKeys.insert(world.chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
+            for (auto &kv : world.chunks.getChunks())
+                validKeys.insert(world.chunks.meshKey(kv.second.chunkX, kv.second.chunkY));
 
             std::vector<std::string> toRemove;
             for (auto &kv : renderer.meshes) {
@@ -358,12 +354,12 @@ void Game::updateBuffers(const CameraParams &cam) {
         // Update only dirty chunks
         std::vector<Vertex> chunkVerts;
         std::vector<uint32_t> chunkIndices;
-        for (auto &kv : world.loadedChunks) {
+        for (auto &kv : world.chunks.getChunks()) {
             Chunk &chunk = kv.second;
             if (!chunk.needsUpdate) continue;
 
-            world.generateChunkVertices(chunk, chunkVerts, chunkIndices);
-            std::string key = world.chunkMeshKey(chunk.chunkX, chunk.chunkY);
+            ChunkMesher::mesh(chunk, chunkVerts, chunkIndices, world.chunks.getChunkSize());
+            std::string key = world.chunks.meshKey(chunk.chunkX, chunk.chunkY);
 
             if (chunkVerts.empty() || chunkIndices.empty()) {
                 renderer.destroyMesh(key);
@@ -378,9 +374,9 @@ void Game::updateBuffers(const CameraParams &cam) {
 
         // Push chunk keys to the renderer.
         std::vector<std::string> keys;
-        keys.reserve(world.loadedChunks.size());
-        for (auto &kv : world.loadedChunks)
-            keys.push_back(world.chunkMeshKey(kv.second.chunkX, kv.second.chunkY));
+        keys.reserve(world.chunks.getChunks().size());
+        for (auto &kv : world.chunks.getChunks())
+            keys.push_back(world.chunks.meshKey(kv.second.chunkX, kv.second.chunkY));
 
         renderer.setChunkKeys(keys);
 
@@ -420,13 +416,11 @@ void Game::updateBuffers(const CameraParams &cam) {
 }
 
 void Game::saveWorld() {
-    std::string path = BINARY_SAVE ? SAVE_PATH_BIN : SAVE_PATH_TXT;
-    world.save(path, BINARY_SAVE, player.inventory);
+    serializer.save(world, player.inventory);
 }
 
 void Game::loadOrGenerateWorld() {
-    std::string path = BINARY_SAVE ? SAVE_PATH_BIN : SAVE_PATH_TXT;
-    if (!world.load(path, BINARY_SAVE, player.inventory)) {
+    if (!serializer.load(world, player.inventory)) {
         std::cout << "[Game] No save found, generating new world...\n";
         unsigned int seed = static_cast<unsigned int>(
             std::chrono::system_clock::now().time_since_epoch().count()
