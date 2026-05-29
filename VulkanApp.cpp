@@ -48,6 +48,7 @@ void VulkanApp::initVulkan() {
     vlkRenderer.pickPhysicalDevice();
     vlkRenderer.createLogicalDevice();
     vlkRenderer.createVmaAllocator();
+    vlkRenderer.createStagingBuffer();
     vlkRenderer.createSwapChain(window);
     vlkRenderer.createImageViews();
     vlkRenderer.createRenderPass();
@@ -118,7 +119,7 @@ void VulkanApp::cleanup() {
 
     vkDestroyCommandPool(vlkRenderer.device, vlkRenderer.commandPool, nullptr);
 
-    // VMA allocator must be destroyed before the device
+    vlkRenderer.destroyStagingBuffer();
     vmaDestroyAllocator(vlkRenderer.vmaAllocator);
 
     vkDestroyDevice(vlkRenderer.device, nullptr);

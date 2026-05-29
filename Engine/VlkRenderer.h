@@ -250,6 +250,17 @@ public:
     VmaAllocator vmaAllocator = VK_NULL_HANDLE;
 
     // =========================================================================
+    // Persistent staging buffer
+    // =========================================================================
+
+    VkBuffer stagingBuffer = VK_NULL_HANDLE;
+    VmaAllocation stagingAllocation = VK_NULL_HANDLE;
+    void* stagingMapped = nullptr;
+    VkDeviceSize stagingBufferSize = 0;
+
+    static constexpr VkDeviceSize STAGING_BUFFER_SIZE = 32 * 1024 * 1024; // 32MB
+
+    // =========================================================================
     // Initialization / Setup
     // =========================================================================
 
@@ -262,6 +273,8 @@ public:
     void createLogicalDevice();
 
     void createVmaAllocator();
+
+    void createStagingBuffer();
 
     void createSwapChain(GLFWwindow* window);
 
@@ -418,6 +431,12 @@ public:
     void copyBuffer(
         VkBuffer srcBuffer,
         VkBuffer dstBuffer,
+        VkDeviceSize size
+    );
+
+    void destroyStagingBuffer();
+
+    void ensureStagingBuffer(
         VkDeviceSize size
     );
 

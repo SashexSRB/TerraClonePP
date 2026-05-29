@@ -141,6 +141,20 @@ void VlkRenderer::createVmaAllocator() {
     std::cout << "OK: VMA Allocator created!\n";
 }
 
+void VlkRenderer::createStagingBuffer() {
+    stagingBufferSize = STAGING_BUFFER_SIZE;
+
+    createBuffer(
+        stagingBufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_ONLY,
+        stagingBuffer, stagingAllocation
+    );
+
+    vmaMapMemory(vmaAllocator, stagingAllocation, &stagingMapped);
+    std::cout << "OK: Persistent staging buffer created (" << (stagingBufferSize / 1024 / 1024) << "MB)\n";
+}
+
 void VlkRenderer::createSwapChain(GLFWwindow *window) {
     SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
@@ -973,74 +987,38 @@ void VlkRenderer::cleanupSwapChain() {
 
 void VlkRenderer::updateVertexBuffer(const std::string &name, const std::vector<Vertex> &vertices) {
     VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
-
     MeshBuffer &mesh = meshes[name];
 
-    if (mesh.vertexBuffer != VK_NULL_HANDLE) {
+    if (mesh.vertexBuffer != VK_NULL_HANDLE)
         vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
-    }
 
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingAllocation;
+    ensureStagingBuffer(bufferSize);
+    memcpy(stagingMapped, vertices.data(), (size_t)bufferSize);
 
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY,
-        stagingBuffer, stagingAllocation
-    );
-
-    void *data;
-    vmaMapMemory(vmaAllocator, stagingAllocation, &data);
-    memcpy(data, vertices.data(), (size_t) bufferSize);
-    vmaUnmapMemory(vmaAllocator, stagingAllocation);
-
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        mesh.vertexBuffer, mesh.vertexAllocation
-    );
+    createBuffer(bufferSize,
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                 VMA_MEMORY_USAGE_GPU_ONLY,
+                 mesh.vertexBuffer, mesh.vertexAllocation);
 
     copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize);
-    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
 }
 
 void VlkRenderer::updateIndexBuffer(const std::string &name, const std::vector<uint32_t> &indices) {
     VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
-
     MeshBuffer &mesh = meshes[name];
 
-    if (mesh.indexBuffer != VK_NULL_HANDLE) {
+    if (mesh.indexBuffer != VK_NULL_HANDLE)
         vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
-    }
 
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingAllocation;
+    ensureStagingBuffer(bufferSize);
+    memcpy(stagingMapped, indices.data(), (size_t)bufferSize);
 
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY,
-        stagingBuffer, stagingAllocation
-    );
-
-    void *data;
-    vmaMapMemory(vmaAllocator, stagingAllocation, &data);
-    memcpy(data, indices.data(), (size_t) bufferSize);
-    vmaUnmapMemory(vmaAllocator, stagingAllocation);
-
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        mesh.indexBuffer, mesh.indexAllocation
-    );
+    createBuffer(bufferSize,
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                 VMA_MEMORY_USAGE_GPU_ONLY,
+                 mesh.indexBuffer, mesh.indexAllocation);
 
     copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize);
-
-    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
-
     mesh.indexCount = indices.size();
 }
 
@@ -1070,68 +1048,36 @@ void VlkRenderer::updateVertexBuffer(int64_t key, const std::vector<Vertex> &ver
     VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
     MeshBuffer &mesh = chunkMeshes[key];
 
-    if (mesh.vertexBuffer != VK_NULL_HANDLE) {
+    if (mesh.vertexBuffer != VK_NULL_HANDLE)
         vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
-    }
 
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingAllocation;
+    ensureStagingBuffer(bufferSize);
+    memcpy(stagingMapped, vertices.data(), (size_t)bufferSize);
 
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY,
-        stagingBuffer, stagingAllocation
-    );
-
-    void *data;
-    vmaMapMemory(vmaAllocator, stagingAllocation, &data);
-    memcpy(data, vertices.data(), (size_t)bufferSize);
-    vmaUnmapMemory(vmaAllocator, stagingAllocation);
-
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        mesh.vertexBuffer, mesh.vertexAllocation
-    );
+    createBuffer(bufferSize,
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                 VMA_MEMORY_USAGE_GPU_ONLY,
+                 mesh.vertexBuffer, mesh.vertexAllocation);
 
     copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize);
-    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
 }
 
 void VlkRenderer::updateIndexBuffer(int64_t key, const std::vector<uint32_t> &indices) {
     VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
     MeshBuffer &mesh = chunkMeshes[key];
 
-    if (mesh.indexBuffer != VK_NULL_HANDLE) {
+    if (mesh.indexBuffer != VK_NULL_HANDLE)
         vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
-    }
 
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingAllocation;
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY,
-        stagingBuffer, stagingAllocation
-    );
+    ensureStagingBuffer(bufferSize);
+    memcpy(stagingMapped, indices.data(), (size_t)bufferSize);
 
-    void *data;
-    vmaMapMemory(vmaAllocator, stagingAllocation, &data);
-    memcpy(data, indices.data(), (size_t)bufferSize);
-    vmaUnmapMemory(vmaAllocator, stagingAllocation);
-
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        mesh.indexBuffer, mesh.indexAllocation
-    );
+    createBuffer(bufferSize,
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                 VMA_MEMORY_USAGE_GPU_ONLY,
+                 mesh.indexBuffer, mesh.indexAllocation);
 
     copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize);
-    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
-
     mesh.indexCount = indices.size();
 }
 
@@ -1515,6 +1461,33 @@ void VlkRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSiz
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
     endSingleTimeCommands(commandBuffer);
+}
+
+void VlkRenderer::destroyStagingBuffer() {
+    if (stagingBuffer != VK_NULL_HANDLE) {
+        vmaUnmapMemory(vmaAllocator, stagingAllocation);
+        vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
+
+        stagingBuffer = VK_NULL_HANDLE;
+        stagingMapped = nullptr;
+    }
+}
+
+void VlkRenderer::ensureStagingBuffer(VkDeviceSize size) {
+    if (size <= stagingBufferSize) return;
+
+    // Grow the staging buffer
+    destroyStagingBuffer();
+    stagingBufferSize = size * 2; // double to avoid frequent regrowth
+    createBuffer(
+        stagingBufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_ONLY,
+        stagingBuffer, stagingAllocation
+    );
+
+    vmaMapMemory(vmaAllocator, stagingAllocation, &stagingMapped);
+    std::cout << "[Staging] Grew to " << (stagingBufferSize / 1024 / 1024) << "MB\n";
 }
 
 void VlkRenderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
