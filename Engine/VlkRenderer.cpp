@@ -533,6 +533,36 @@ void VlkRenderer::createCommandPool() {
     std::cout << "OK: Command Pool created!\n";
 }
 
+void VlkRenderer::createTransferResources() {
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = indices.graphicsFamily.value();
+
+    if (vkCreateCommandPool(device, &poolInfo, nullptr, &transferCommandPool) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create transfer pool.");
+
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = transferCommandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+
+    if (vkAllocateCommandBuffers(device, &allocInfo, &transferCommandBuffer) != VK_SUCCESS)
+        throw std::runtime_error("Failed to allocate transfer command buffers.");
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    if (vkCreateFence(device, &fenceInfo, nullptr, &transferFence) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create transfer fence!");
+
+    std::cout << "OK: Transfer resources created!\n";
+}
+
 void VlkRenderer::createDepthResources() {
     VkFormat depthFormat = findDepthFormat();
 
@@ -992,15 +1022,16 @@ void VlkRenderer::updateVertexBuffer(const std::string &name, const std::vector<
     if (mesh.vertexBuffer != VK_NULL_HANDLE)
         vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
 
-    ensureStagingBuffer(bufferSize);
-    memcpy(stagingMapped, vertices.data(), (size_t)bufferSize);
+    ensureStagingBuffer(stagingOffset + bufferSize);
+    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, vertices.data(), (size_t)bufferSize);
 
     createBuffer(bufferSize,
                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                  VMA_MEMORY_USAGE_GPU_ONLY,
                  mesh.vertexBuffer, mesh.vertexAllocation);
 
-    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize);
+    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize, stagingOffset);
+    stagingOffset += bufferSize;
 }
 
 void VlkRenderer::updateIndexBuffer(const std::string &name, const std::vector<uint32_t> &indices) {
@@ -1010,15 +1041,17 @@ void VlkRenderer::updateIndexBuffer(const std::string &name, const std::vector<u
     if (mesh.indexBuffer != VK_NULL_HANDLE)
         vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
 
-    ensureStagingBuffer(bufferSize);
-    memcpy(stagingMapped, indices.data(), (size_t)bufferSize);
+    ensureStagingBuffer(stagingOffset + bufferSize);
+    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, indices.data(), (size_t)bufferSize);
 
     createBuffer(bufferSize,
                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                  VMA_MEMORY_USAGE_GPU_ONLY,
                  mesh.indexBuffer, mesh.indexAllocation);
 
-    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize);
+    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize, stagingOffset);
+    stagingOffset += bufferSize;
+
     mesh.indexCount = indices.size();
 }
 
@@ -1051,15 +1084,16 @@ void VlkRenderer::updateVertexBuffer(int64_t key, const std::vector<Vertex> &ver
     if (mesh.vertexBuffer != VK_NULL_HANDLE)
         vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
 
-    ensureStagingBuffer(bufferSize);
-    memcpy(stagingMapped, vertices.data(), (size_t)bufferSize);
+    ensureStagingBuffer(stagingOffset + bufferSize);
+    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, vertices.data(), (size_t)bufferSize);
 
     createBuffer(bufferSize,
                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                  VMA_MEMORY_USAGE_GPU_ONLY,
                  mesh.vertexBuffer, mesh.vertexAllocation);
 
-    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize);
+    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize, stagingOffset);
+    stagingOffset += bufferSize;
 }
 
 void VlkRenderer::updateIndexBuffer(int64_t key, const std::vector<uint32_t> &indices) {
@@ -1069,15 +1103,17 @@ void VlkRenderer::updateIndexBuffer(int64_t key, const std::vector<uint32_t> &in
     if (mesh.indexBuffer != VK_NULL_HANDLE)
         vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
 
-    ensureStagingBuffer(bufferSize);
-    memcpy(stagingMapped, indices.data(), (size_t)bufferSize);
+    ensureStagingBuffer(stagingOffset + bufferSize);
+    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, indices.data(), (size_t)bufferSize);
 
     createBuffer(bufferSize,
                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                  VMA_MEMORY_USAGE_GPU_ONLY,
                  mesh.indexBuffer, mesh.indexAllocation);
 
-    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize);
+    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize, stagingOffset);
+    stagingOffset += bufferSize;
+
     mesh.indexCount = indices.size();
 }
 
@@ -1453,14 +1489,12 @@ void VlkRenderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
     }
 }
 
-void VlkRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
+void VlkRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkDeviceSize srcOffset) {
     VkBufferCopy copyRegion{};
+    copyRegion.srcOffset = srcOffset;
+    copyRegion.dstOffset = 0;
     copyRegion.size = size;
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-    endSingleTimeCommands(commandBuffer);
+    vkCmdCopyBuffer(transferCommandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 }
 
 void VlkRenderer::destroyStagingBuffer() {
@@ -1599,6 +1633,47 @@ VkImageView VlkRenderer::createImageView(VkImage image, VkFormat format, VkImage
         throw std::runtime_error("Failed to create texture image view!");
 
     return imageView;
+}
+
+void VlkRenderer::beginTransferBatch() {
+    if (transferOpen) return;
+
+    // Wait for previous frame's transfers to complete
+    vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &transferFence);
+    vkResetCommandBuffer(transferCommandBuffer, 0);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
+
+    stagingOffset = 0;
+    transferOpen = true;
+}
+
+void VlkRenderer::endTransferBatch() {
+    if (!transferOpen) return;
+
+    vkEndCommandBuffer(transferCommandBuffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &transferCommandBuffer;
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, transferFence);
+    // No vkQueueWaitIdle - GPU continues, we check fence next frame
+    transferOpen = false;
+}
+
+void VlkRenderer::waitTransferComplete() {
+    if (!transferOpen) {
+        vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+    } else {
+        endTransferBatch();
+        vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+    }
 }
 
 // =========================================================================

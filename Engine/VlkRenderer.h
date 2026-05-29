@@ -261,6 +261,16 @@ public:
     static constexpr VkDeviceSize STAGING_BUFFER_SIZE = 32 * 1024 * 1024; // 32MB
 
     // =========================================================================
+    // Transfer batching
+    // =========================================================================
+    VkCommandPool transferCommandPool;
+    VkCommandBuffer transferCommandBuffer;
+    VkFence transferFence;
+    bool transferOpen = false;
+
+    VkDeviceSize stagingOffset = 0;
+
+    // =========================================================================
     // Initialization / Setup
     // =========================================================================
 
@@ -289,6 +299,8 @@ public:
     void createFramebuffers();
 
     void createCommandPool();
+
+    void createTransferResources();
 
     void createDepthResources();
 
@@ -431,7 +443,8 @@ public:
     void copyBuffer(
         VkBuffer srcBuffer,
         VkBuffer dstBuffer,
-        VkDeviceSize size
+        VkDeviceSize size,
+        VkDeviceSize srcOffset
     );
 
     void destroyStagingBuffer();
@@ -470,6 +483,12 @@ public:
         VkFormat format,
         VkImageAspectFlags aspectFlags
     );
+
+    void beginTransferBatch();
+
+    void endTransferBatch();
+
+    void waitTransferComplete();
 
     // =========================================================================
     // Device / Swapchain Queries

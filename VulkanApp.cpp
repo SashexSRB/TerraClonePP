@@ -55,6 +55,7 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createDescriptorSetLayout();
     vlkRenderer.createGraphicsPipeline();
     vlkRenderer.createCommandPool();
+    vlkRenderer.createTransferResources();
     vlkRenderer.createDepthResources();
     vlkRenderer.createFramebuffers();
     vlkRenderer.createTextureImage();
@@ -110,6 +111,9 @@ void VulkanApp::cleanup() {
     vkDestroyPipelineLayout(vlkRenderer.device, vlkRenderer.pipelineLayout, nullptr);
 
     vkDestroyRenderPass(vlkRenderer.device, vlkRenderer.renderPass, nullptr);
+
+    vkDestroyFence(vlkRenderer.device, vlkRenderer.transferFence, nullptr);
+    vkDestroyCommandPool(vlkRenderer.device, vlkRenderer.transferCommandPool, nullptr);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(vlkRenderer.device, vlkRenderer.imageAvailableSemaphores[i], nullptr);

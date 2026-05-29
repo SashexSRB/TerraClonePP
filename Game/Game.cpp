@@ -357,6 +357,8 @@ void Game::updateBuffers(const CameraParams &cam) {
     {
         std::lock_guard<std::mutex> lock(renderMutex);
 
+        renderer.beginTransferBatch();
+
         // Clean up GPU buffers for chunks that are no longer loaded
         if (chunksChanged) {
             std::unordered_set<int64_t> validKeys;
@@ -462,8 +464,9 @@ void Game::updateBuffers(const CameraParams &cam) {
             renderer.buildTextMesh(textCalls);
             inventoryMeshDirty = false;
         }
-    }
 
+        renderer.endTransferBatch();
+    }
     renderer.updateUniformBuffer(renderer.currentFrame, cam);
 }
 
