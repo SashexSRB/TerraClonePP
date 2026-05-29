@@ -130,3 +130,13 @@ add_custom_command(
 )
 add_custom_target(Fonts ALL DEPENDS ${FONT_DEST})
 add_dependencies(TerraClonePP Fonts)
+
+# ─── Vulkan Memory Allocator ───────────────────────────────────────────────────────────────
+include(FetchContent)
+FetchContent_Declare(
+        vma
+        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+        GIT_TAG        v3.3.0
+)
+FetchContent_MakeAvailable(vma)
+target_link_libraries(TerraClonePP PRIVATE VulkanMemoryAllocator)
