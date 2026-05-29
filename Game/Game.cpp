@@ -363,7 +363,7 @@ void Game::updateBuffers(const CameraParams &cam) {
 
             std::vector<std::string> toRemove;
             for (auto &kv : renderer.meshes) {
-                if (kv.first == "player" || kv.first == "inventory") continue;
+                if (kv.first == "player" || kv.first == "inventory" || kv.first == "__sky__" || kv.first == "__text__") continue;
                 if (!validKeys.count(kv.first))
                     toRemove.push_back(kv.first);
             }
@@ -412,6 +412,9 @@ void Game::updateBuffers(const CameraParams &cam) {
                 cachedChunkKeys.push_back(world.chunks.meshKey(chunk.chunkX, chunk.chunkY));
         }
         renderer.setChunkKeys(cachedChunkKeys);
+
+        // Update sky mesh every frame
+        renderer.updateSkyMesh(cam, 0.15f); // 0.15 = parallax factor
 
         // Player mesh
         if (playerMeshDirty) {

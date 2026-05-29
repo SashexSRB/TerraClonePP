@@ -59,7 +59,9 @@ public:
         glm::mat4 proj;
         int useUIProj;
         int useFont;
-        int _pad[2];    // Needed for 16-byte alignment
+        int useSky;
+        int _pad[1];    // Needed for 16-byte alignment
+        glm::vec2 skyUVOffset;
     };
 
     struct MeshBuffer {
@@ -133,10 +135,20 @@ public:
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
+
+    // Font stuff
     VkImage fontImage;
     VkDeviceMemory fontImageMemory;
     VkImageView fontImageView;
     VkSampler fontSampler;
+
+    // Sky texture
+    VkImage skyImage = VK_NULL_HANDLE;
+    VkDeviceMemory skyImageMemory = VK_NULL_HANDLE;
+    VkImageView skyImageView = VK_NULL_HANDLE;
+    VkSampler skySampler = VK_NULL_HANDLE;
+
+    CameraParams lastCam;
 
     // Methods
     void createInstance();
@@ -272,6 +284,12 @@ public:
     VkFormat findDepthFormat();
 
     void setTextDrawCalls(const std::vector<TextDrawCall> &calls);
+
+    void createSkyTexture(const std::string &path);
+
+    void drawSky(VkCommandBuffer commandBuffer);
+
+    void updateSkyMesh(const CameraParams &cam, float parallaxFactor = 0.1f);
 
 private:
     std::vector<std::string> chunkKeys;
