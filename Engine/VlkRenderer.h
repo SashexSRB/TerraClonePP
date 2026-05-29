@@ -62,6 +62,7 @@ public:
         int useSky;
         int _pad[1];    // Needed for 16-byte alignment
         glm::vec2 skyUVOffset;
+        glm::vec2 skyUVScale;
     };
 
     struct MeshBuffer {
@@ -147,6 +148,10 @@ public:
     VkDeviceMemory skyImageMemory = VK_NULL_HANDLE;
     VkImageView skyImageView = VK_NULL_HANDLE;
     VkSampler skySampler = VK_NULL_HANDLE;
+
+    glm::vec2 skyUVOffset = {0, 0};
+    float skyUVScaleX = 1.0f;
+    float skyUVScaleY = 1.0f;
 
     CameraParams lastCam;
 

@@ -145,8 +145,10 @@ void Game::update(float deltaTime) {
     glm::vec2 prevPos = player.position;
     applyMovement(player, inputState, deltaTime);
     resolveCollisions(player, world, deltaTime);
-    if (player.position != prevPos)
+    if (player.position != prevPos) {
         playerMeshDirty = true;
+        skyMeshDirty = true;
+    }
 }
 
 CameraParams Game::computeCameraParams(const Player &player, const World &world,
@@ -350,7 +352,7 @@ void Game::updateBuffers(const CameraParams &cam) {
     int playerTileX = static_cast<int>(player.position.x / 32.0f);
     int playerTileY = static_cast<int>(player.position.y / 32.0f);
 
-    bool chunksChanged = world.chunks.update(playerTileX, playerTileY, 3);
+    bool chunksChanged = world.chunks.update(playerTileX, playerTileY, 2);
 
     {
         std::lock_guard<std::mutex> lock(renderMutex);
@@ -413,8 +415,11 @@ void Game::updateBuffers(const CameraParams &cam) {
         }
         renderer.setChunkKeys(cachedChunkKeys);
 
-        // Update sky mesh every frame
-        renderer.updateSkyMesh(cam, 0.15f); // 0.15 = parallax factor
+        // Update sky mesh when dirty
+        if (skyMeshDirty) {
+            renderer.updateSkyMesh(cam, 0.15f);
+            skyMeshDirty = false;
+        }
 
         // Player mesh
         if (playerMeshDirty) {

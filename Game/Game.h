@@ -73,6 +73,7 @@ private:
 
     bool playerMeshDirty = true;
     bool inventoryMeshDirty = true;
+    bool skyMeshDirty = true;
     std::vector<std::string> cachedChunkKeys;
 
     std::vector<QuadSpec> meshScratch;

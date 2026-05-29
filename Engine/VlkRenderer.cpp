@@ -1776,31 +1776,27 @@ void VlkRenderer::createSkyTexture(const std::string &path) {
 }
 
 void VlkRenderer::updateSkyMesh(const CameraParams &cam, float parallaxFactor) {
-    // Fullscreen quad in screen pixel coords (UI space)
     float w = static_cast<float>(swapChainExtent.width);
     float h = static_cast<float>(swapChainExtent.height);
 
-    float uvOffsetX = fmod(cam.position.x * parallaxFactor / 1024.0f, 1.0f);
-    float uvOffsetY = 0.0f;  // no vertical scrolling
+    // Only create the static quad once
+    if (meshes.find("__sky__") == meshes.end()) {
+        std::vector<Vertex> verts = {
+            {{0, 0}, 0.99f, {1,1,1}, {0, 0}},
+            {{w, 0}, 0.99f, {1,1,1}, {1, 0}},
+            {{w, h}, 0.99f, {1,1,1}, {1, 1}},
+            {{0, h}, 0.99f, {1,1,1}, {0, 1}},
+        };
+        std::vector<uint32_t> idxs = {0, 1, 2, 2, 3, 0};
+        updateVertexBuffer("__sky__", verts);
+        updateIndexBuffer("__sky__", idxs);
+    }
 
-    float uvScaleX = static_cast<float>(swapChainExtent.width)  / 1024.0f;
-    float uvScaleY = static_cast<float>(swapChainExtent.height) / 512.0f;
-
-    std::vector<Vertex> verts = {
-        {{0, 0}, 0.99f, {1,1,1}, {uvOffsetX,             uvOffsetY           }},
-        {{w, 0},    0.99f, {1,1,1}, {uvOffsetX + uvScaleX,  uvOffsetY           }},
-        {{w, h}, 0.99f, {1,1,1}, {uvOffsetX + uvScaleX,  uvOffsetY + uvScaleY}},
-        {{0, h},    0.99f, {1,1,1}, {uvOffsetX,             uvOffsetY + uvScaleY}},
-    };
-
-    std::vector<uint32_t> idxs = {0, 1, 2, 2, 3, 0};
-
-    std::cout << "[Sky] uvOffsetX=" << uvOffsetX
-          << " uvScaleX=" << uvScaleX
-          << " uvScaleY=" << uvScaleY << "\n";
-
-    updateVertexBuffer("__sky__", verts);
-    updateIndexBuffer("__sky__", idxs);
+    // Store parallax offset for use in drawSky
+    skyUVOffset.x = fmod(cam.position.x * parallaxFactor / 1024.0f, 1.0f);
+    skyUVOffset.y = 0.0f;
+    skyUVScaleX = static_cast<float>(swapChainExtent.width)  / 1024.0f;
+    skyUVScaleY = static_cast<float>(swapChainExtent.height) / 512.0f;
 }
 
 void VlkRenderer::drawSky(VkCommandBuffer commandBuffer) {
@@ -1816,6 +1812,8 @@ void VlkRenderer::drawSky(VkCommandBuffer commandBuffer) {
     push.proj[1][1] =  2.0f / swapChainExtent.height;
     push.proj[3][0] = -1.0f;
     push.proj[3][1] = -1.0f;
+    push.skyUVOffset = skyUVOffset;
+    push.skyUVScale = {skyUVScaleX, skyUVScaleY};
 
     vkCmdPushConstants(commandBuffer, pipelineLayout,
                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
