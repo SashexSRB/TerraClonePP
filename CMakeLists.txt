@@ -92,17 +92,30 @@ add_dependencies(TerraClonePP Shaders)
 
 # ─── Textures ───────────────────────────────────────────────────────────────
 
-set(TEXTURE_SOURCE ${CMAKE_SOURCE_DIR}/Game/Assets/Textures/textures.png)
-set(TEXTURE_DEST   ${CMAKE_BINARY_DIR}/textures.png)
-
-add_custom_command(
-        OUTPUT  ${TEXTURE_DEST}
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TEXTURE_SOURCE} ${TEXTURE_DEST}
-        DEPENDS ${TEXTURE_SOURCE}
-        COMMENT "Copying textures"
+file(GLOB TEXTURE_SOURCES
+        "${CMAKE_SOURCE_DIR}/Game/Assets/Textures/*"
 )
 
-add_custom_target(Textures ALL DEPENDS ${TEXTURE_DEST})
+set(TEXTURE_OUTPUTS)
+
+foreach(TEXTURE ${TEXTURE_SOURCES})
+    get_filename_component(FILENAME ${TEXTURE} NAME)
+
+    set(DEST_FILE "${CMAKE_BINARY_DIR}/${FILENAME}")
+
+    add_custom_command(
+            OUTPUT ${DEST_FILE}
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${TEXTURE}
+            ${DEST_FILE}
+            DEPENDS ${TEXTURE}
+            COMMENT "Copying ${FILENAME}"
+    )
+
+    list(APPEND TEXTURE_OUTPUTS ${DEST_FILE})
+endforeach()
+
+add_custom_target(Textures ALL DEPENDS ${TEXTURE_OUTPUTS})
 add_dependencies(TerraClonePP Textures)
 
 # ─── Fonts ───────────────────────────────────────────────────────────────

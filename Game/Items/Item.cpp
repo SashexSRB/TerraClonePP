@@ -16,12 +16,12 @@ void Registry::initialize() {
     items[7] = {7, "Ice",       ItemType::Tile, ToolType::None, 7, 0, true,  0.2f, TileBreakType::Pickaxe, 35,   0.8f};
 
 // ── Walls ────────────────────────────────────────────────────────────
-    items[100] = {100, "StoneWall", ItemType::Wall, ToolType::None, 1, 1, false, 1.0f, TileBreakType::Hammer, 50, 0.5f};
+    items[100] = {100, "StoneWall", ItemType::Wall, ToolType::None, 0, 1, false, 0.9f, TileBreakType::Hammer, 50, 0.5f};
 
 // ── Tools ────────────────────────────────────────────────────────────
-    items[1000] = {1000, "Copper Pickaxe", ItemType::Tool,   ToolType::Pickaxe, 0, 1, false, 0.0f, TileBreakType::None, 0, 0.0f, 55, 1.0f, 0,  1};
-    items[1001] = {1001, "Copper Axe",     ItemType::Tool,   ToolType::Axe,     1, 1, false, 0.0f, TileBreakType::None, 0, 0.0f, 35, 1.0f, 0,  1};
-    items[1002] = {1002, "Copper Sword",   ItemType::Weapon, ToolType::None,    2, 1, false, 0.0f, TileBreakType::None, 0, 0.0f, 0,  1.0f, 15, 1};
+    items[1000] = {1000, "Copper Pickaxe", ItemType::Tool,   ToolType::Pickaxe, 0, 2, false, 0.0f, TileBreakType::None, 0, 0.0f, 55, 1.0f, 0,  1};
+    items[1001] = {1001, "Copper Axe",     ItemType::Tool,   ToolType::Axe,     1, 2, false, 0.0f, TileBreakType::None, 0, 0.0f, 35, 1.0f, 0,  1};
+    items[1002] = {1002, "Copper Sword",   ItemType::Weapon, ToolType::None,    2, 2, false, 0.0f, TileBreakType::None, 0, 0.0f, 0,  1.0f, 15, 1};
 
     std::cout << "OK: Registry initialized with " << items.size() << " items.\n";
 }

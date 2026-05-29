@@ -513,10 +513,18 @@ void VlkRenderer::createDescriptorSetLayout() {
     fontSamplerBinding.pImmutableSamplers = nullptr;
     fontSamplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {
+    VkDescriptorSetLayoutBinding skyLayoutBinding{};
+    skyLayoutBinding.binding = 3;
+    skyLayoutBinding.descriptorCount = 1;
+    skyLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    skyLayoutBinding.pImmutableSamplers = nullptr;
+    skyLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {
         uboLayoutBinding,
         samplerLayoutBinding,
-        fontSamplerBinding
+        fontSamplerBinding,
+        skyLayoutBinding
     };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -581,7 +589,7 @@ void VlkRenderer::createDescriptorPool() {
     poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2);
+    poolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 3);
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -623,7 +631,12 @@ void VlkRenderer::createDescriptorSets() {
         fontImageInfo.imageView   = fontImageView;
         fontImageInfo.sampler     = fontSampler;
 
-        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
+        VkDescriptorImageInfo skyImageInfo{};
+        skyImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        skyImageInfo.imageView   = skyImageView;
+        skyImageInfo.sampler     = skySampler;
+
+        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -648,6 +661,14 @@ void VlkRenderer::createDescriptorSets() {
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[2].descriptorCount = 1;
         descriptorWrites[2].pImageInfo = &fontImageInfo;
+
+        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[3].dstSet = descriptorSets[i];
+        descriptorWrites[3].dstBinding = 3;
+        descriptorWrites[3].dstArrayElement = 0;
+        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[3].descriptorCount = 1;
+        descriptorWrites[3].pImageInfo = &skyImageInfo;
 
         vkUpdateDescriptorSets(
             device,
@@ -1145,7 +1166,6 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = 0;
     beginInfo.pInheritanceInfo = nullptr;
-
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
         throw std::runtime_error("Failed to begin recording command buffer!");
 
@@ -1157,7 +1177,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
     renderPassInfo.renderArea.extent = swapChainExtent;
 
     std::array<VkClearValue, 2> clearValues = {};
-    clearValues[0].color = {{0.27f, 0.51f, 0.71f, 1.0f}};
+    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}}; // black — sky covers this
     clearValues[1].depthStencil = {1.0f, 0};
 
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -1165,57 +1185,50 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    // ── World pipeline (depth ON) ─────────────────────────────────────────
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(swapChainExtent.width);
+    viewport.width  = static_cast<float>(swapChainExtent.width);
     viewport.height = static_cast<float>(swapChainExtent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
     scissor.extent = swapChainExtent;
+
+    // ── Sky (UI pipeline, depth OFF, drawn first) ─────────────────────────
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, uiPipeline);
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipelineLayout, 0, 1, &descriptorSets[currentFrame],
+                            0, nullptr);
+    drawSky(commandBuffer);
 
-    vkCmdBindDescriptorSets(
-        commandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        pipelineLayout, 0,
-        1, &descriptorSets[currentFrame],
-        0, nullptr
-    );
+    // ── World pipeline (depth ON) ─────────────────────────────────────────
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipelineLayout, 0, 1, &descriptorSets[currentFrame],
+                            0, nullptr);
 
-    for (const auto &key : chunkKeys) {
+    for (const auto &key : chunkKeys)
         draw(key, commandBuffer);
-    }
-
     draw("player", commandBuffer);
 
     // ── UI pipeline (depth OFF) ───────────────────────────────────────────
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, uiPipeline);
-
-    // viewport and scissor are dynamic so we need to set them again
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-    vkCmdBindDescriptorSets(
-        commandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        pipelineLayout, 0,
-        1, &descriptorSets[currentFrame],
-        0, nullptr
-    );
-
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipelineLayout, 0, 1, &descriptorSets[currentFrame],
+                            0, nullptr);
     drawUI("inventory", commandBuffer);
     drawText(commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
-
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
         throw std::runtime_error("Failed to record command buffer!");
 }
@@ -1294,6 +1307,8 @@ void VlkRenderer::drawFrame(GLFWwindow *window, bool &framebufferResized, const 
     }
 
     updateUniformBuffer(currentFrame, cam);
+
+    lastCam = cam;
 
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
@@ -1514,8 +1529,8 @@ void VlkRenderer::createTextureImage() {
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
     transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    VK_IMAGE_LAYOUT_UNDEFINED,
+VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     copyBufferToImage(stagingBuffer, textureImage,
                       static_cast<uint32_t>(texWidth),
                       static_cast<uint32_t>(texHeight));
@@ -1697,4 +1712,119 @@ void VlkRenderer::createFontTexture(const std::string& fontPath, int fontSize)
         throw std::runtime_error("Failed to create font sampler!");
 
     std::cout << "OK: SDF Font texture created!\n";
+}
+
+void VlkRenderer::createSkyTexture(const std::string &path) {
+    int w, h, channels;
+    stbi_uc *pixels = stbi_load(path.c_str(), &w, &h, &channels, STBI_rgb_alpha);
+    if (!pixels) throw std::runtime_error("Failed to load sky texture: " + path);
+
+    VkDeviceSize imageSize = w * h * 4;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingMemory;
+    createBuffer(
+        imageSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer, stagingMemory
+    );
+
+    void* data;
+    vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, imageSize);
+    vkUnmapMemory(device, stagingMemory);
+    stbi_image_free(pixels);
+
+    createImage(
+        w, h, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        skyImage, skyImageMemory
+    );
+
+    transitionImageLayout(
+        skyImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
+
+    copyBufferToImage(stagingBuffer, skyImage, w, h);
+
+    transitionImageLayout(
+        skyImage, VK_FORMAT_R8G8B8A8_SRGB,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
+
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingMemory, nullptr);
+
+    skyImageView = createImageView(skyImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &skySampler) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create sky sampler!");
+
+    std::cout << "OK: Sky texture created!\n";
+}
+
+void VlkRenderer::updateSkyMesh(const CameraParams &cam, float parallaxFactor) {
+    // Fullscreen quad in screen pixel coords (UI space)
+    float w = static_cast<float>(swapChainExtent.width);
+    float h = static_cast<float>(swapChainExtent.height);
+
+    float uvOffsetX = fmod(cam.position.x * parallaxFactor / 1024.0f, 1.0f);
+    float uvOffsetY = 0.0f;  // no vertical scrolling
+
+    float uvScaleX = static_cast<float>(swapChainExtent.width)  / 1024.0f;
+    float uvScaleY = static_cast<float>(swapChainExtent.height) / 512.0f;
+
+    std::vector<Vertex> verts = {
+        {{0, 0}, 0.99f, {1,1,1}, {uvOffsetX,             uvOffsetY           }},
+        {{w, 0},    0.99f, {1,1,1}, {uvOffsetX + uvScaleX,  uvOffsetY           }},
+        {{w, h}, 0.99f, {1,1,1}, {uvOffsetX + uvScaleX,  uvOffsetY + uvScaleY}},
+        {{0, h},    0.99f, {1,1,1}, {uvOffsetX,             uvOffsetY + uvScaleY}},
+    };
+
+    std::vector<uint32_t> idxs = {0, 1, 2, 2, 3, 0};
+
+    std::cout << "[Sky] uvOffsetX=" << uvOffsetX
+          << " uvScaleX=" << uvScaleX
+          << " uvScaleY=" << uvScaleY << "\n";
+
+    updateVertexBuffer("__sky__", verts);
+    updateIndexBuffer("__sky__", idxs);
+}
+
+void VlkRenderer::drawSky(VkCommandBuffer commandBuffer) {
+    auto it = meshes.find("__sky__");
+    if (it == meshes.end() || it->second.indexCount == 0) return;
+
+    UIPushConstants push{};
+    push.useUIProj = 1;
+    push.useFont   = 0;
+    push.useSky    = 1;
+    push.proj      = glm::mat4(1.0f);
+    push.proj[0][0] =  2.0f / swapChainExtent.width;
+    push.proj[1][1] =  2.0f / swapChainExtent.height;
+    push.proj[3][0] = -1.0f;
+    push.proj[3][1] = -1.0f;
+
+    vkCmdPushConstants(commandBuffer, pipelineLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof(UIPushConstants), &push);
+
+    draw("__sky__", commandBuffer);
+
+    UIPushConstants reset{};
+    vkCmdPushConstants(commandBuffer, pipelineLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof(UIPushConstants), &reset);
 }

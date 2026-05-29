@@ -56,6 +56,7 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createTextureImageView();
     vlkRenderer.createSampler();
     vlkRenderer.createFontTexture(ASSET_PATH "ANDYB.TTF", 20);
+    vlkRenderer.createSkyTexture(ASSET_PATH "sky.png");
     vlkRenderer.createUniformBuffers();
     vlkRenderer.createDescriptorPool();
     vlkRenderer.createDescriptorSets();
@@ -74,6 +75,11 @@ void VulkanApp::mainLoop() {
 
 void VulkanApp::cleanup() {
     vlkRenderer.cleanupSwapChain();
+
+    vkDestroySampler(vlkRenderer.device, vlkRenderer.skySampler, nullptr);
+    vkDestroyImageView(vlkRenderer.device, vlkRenderer.skyImageView, nullptr);
+    vkDestroyImage(vlkRenderer.device, vlkRenderer.skyImage, nullptr);
+    vkFreeMemory(vlkRenderer.device, vlkRenderer.skyImageMemory, nullptr);
 
     vkDestroySampler(vlkRenderer.device, vlkRenderer.fontSampler, nullptr);
     vkDestroyImageView(vlkRenderer.device, vlkRenderer.fontImageView, nullptr);

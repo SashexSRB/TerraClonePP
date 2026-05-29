@@ -2,12 +2,15 @@
 
 layout(binding = 1) uniform sampler2D texSampler;
 layout(binding = 2) uniform sampler2D fontSampler;
+layout(binding = 3) uniform sampler2D skySampler;
 
 layout(push_constant) uniform PushConstants {
     mat4 proj;
     int  useUIProj;
     int  useFont;
-    int  _pad[2];
+    int  useSky;
+    int  _pad[1];
+    vec2 skyUVOffset;
 } push;
 
 layout(location = 0) in vec3 fragColor;
@@ -32,6 +35,8 @@ void main() {
         float finalAlpha = max(alpha, outline);
 
         outColor = vec4(finalColor, finalAlpha);
+    } else if (push.useSky == 1) {
+        outColor = texture(skySampler, fragTexCoord);
     } else {
         outColor = texture(texSampler, fragTexCoord);
     }
