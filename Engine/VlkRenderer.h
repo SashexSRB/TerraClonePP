@@ -137,7 +137,8 @@ public:
     // Mesh Storage
     // =========================================================================
 
-    std::unordered_map<std::string, MeshBuffer> meshes;
+    std::unordered_map<std::string, MeshBuffer> meshes;       // player, inventory, sky, text
+    std::unordered_map<int64_t, MeshBuffer> chunkMeshes;      // chunks only
 
     // =========================================================================
     // Core Vulkan Objects
@@ -166,7 +167,7 @@ public:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
 
-    static std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkImageView> swapChainImageViews;
 
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
@@ -330,6 +331,20 @@ public:
 
     void setChunkKeys(const std::vector<std::string>& keys);
 
+    // Overloads - NOT IMPLEMENTED YET.
+    void updateVertexBuffer(
+        int64_t key,
+        const std::vector<Vertex> &vertices
+    );
+
+    void updateIndexBuffer(
+        int64_t key,
+        const std::vector<uint32_t> &indices
+    );
+
+    void destroyMesh(int64_t key);
+
+
     // =========================================================================
     // Drawing
     // =========================================================================
@@ -487,12 +502,6 @@ public:
 
     static std::vector<char> readFile(
         const std::string& filename
-    );
-
-    static void framebufferResizeCallback(
-        GLFWwindow* window,
-        int width,
-        int height
     );
 
 private:
