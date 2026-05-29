@@ -11,6 +11,7 @@ layout(push_constant) uniform PushConstants {
     int  useSky;
     int  _pad[1];
     vec2 skyUVOffset;
+    vec2 skyUVScale;
 } push;
 
 layout(location = 0) in vec3 fragColor;
@@ -36,7 +37,8 @@ void main() {
 
         outColor = vec4(finalColor, finalAlpha);
     } else if (push.useSky == 1) {
-        outColor = texture(skySampler, fragTexCoord);
+        vec2 uv = fragTexCoord * push.skyUVScale + push.skyUVOffset;
+        outColor = texture(skySampler, uv);
     } else {
         outColor = texture(texSampler, fragTexCoord);
     }
