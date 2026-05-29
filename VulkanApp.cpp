@@ -6,6 +6,9 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 VulkanApp::VulkanApp() : window(nullptr), game(nullptr) { }
 VulkanApp::~VulkanApp() {}
 
@@ -44,6 +47,7 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createSurface(window);
     vlkRenderer.pickPhysicalDevice();
     vlkRenderer.createLogicalDevice();
+    vlkRenderer.createVmaAllocator();
     vlkRenderer.createSwapChain(window);
     vlkRenderer.createImageViews();
     vlkRenderer.createRenderPass();
@@ -76,30 +80,28 @@ void VulkanApp::mainLoop() {
 void VulkanApp::cleanup() {
     vlkRenderer.cleanupSwapChain();
 
+    // Sky
     vkDestroySampler(vlkRenderer.device, vlkRenderer.skySampler, nullptr);
     vkDestroyImageView(vlkRenderer.device, vlkRenderer.skyImageView, nullptr);
-    vkDestroyImage(vlkRenderer.device, vlkRenderer.skyImage, nullptr);
-    vkFreeMemory(vlkRenderer.device, vlkRenderer.skyImageMemory, nullptr);
+    vmaDestroyImage(vlkRenderer.vmaAllocator, vlkRenderer.skyImage, vlkRenderer.skyImageAllocation);
 
+    // Font
     vkDestroySampler(vlkRenderer.device, vlkRenderer.fontSampler, nullptr);
     vkDestroyImageView(vlkRenderer.device, vlkRenderer.fontImageView, nullptr);
-    vkDestroyImage(vlkRenderer.device, vlkRenderer.fontImage, nullptr);
-    vkFreeMemory(vlkRenderer.device, vlkRenderer.fontImageMemory, nullptr);
+    vmaDestroyImage(vlkRenderer.vmaAllocator, vlkRenderer.fontImage, vlkRenderer.fontImageAllocation);
 
+    // Texture atlas
     vkDestroySampler(vlkRenderer.device, vlkRenderer.textureSampler, nullptr);
-
     vkDestroyImageView(vlkRenderer.device, vlkRenderer.textureImageView, nullptr);
+    vmaDestroyImage(vlkRenderer.vmaAllocator, vlkRenderer.textureImage, vlkRenderer.textureImageAllocation);
 
-    vkDestroyImage(vlkRenderer.device, vlkRenderer.textureImage, nullptr);
-    vkFreeMemory(vlkRenderer.device, vlkRenderer.textureImageMemory, nullptr);
-
+    // Uniform buffers
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroyBuffer(vlkRenderer.device, vlkRenderer.uniformBuffers[i], nullptr);
-        vkFreeMemory(vlkRenderer.device, vlkRenderer.uniformBuffersMemory[i], nullptr);
+        vmaUnmapMemory(vlkRenderer.vmaAllocator, vlkRenderer.uniformAllocations[i]);
+        vmaDestroyBuffer(vlkRenderer.vmaAllocator, vlkRenderer.uniformBuffers[i], vlkRenderer.uniformAllocations[i]);
     }
 
     vkDestroyDescriptorPool(vlkRenderer.device, vlkRenderer.descriptorPool, nullptr);
-
     vkDestroyDescriptorSetLayout(vlkRenderer.device, vlkRenderer.descriptorSetLayout, nullptr);
 
     vkDestroyPipeline(vlkRenderer.device, vlkRenderer.uiPipeline, nullptr);
@@ -116,17 +118,18 @@ void VulkanApp::cleanup() {
 
     vkDestroyCommandPool(vlkRenderer.device, vlkRenderer.commandPool, nullptr);
 
+    // VMA allocator must be destroyed before the device
+    vmaDestroyAllocator(vlkRenderer.vmaAllocator);
+
     vkDestroyDevice(vlkRenderer.device, nullptr);
 
     if (validator.enableValidationLayers)
         validator.DestroyDebugUtilsMessengerEXT(vlkRenderer.instance, validator.debugMessenger, nullptr);
 
     vkDestroySurfaceKHR(vlkRenderer.instance, vlkRenderer.surface, nullptr);
-
     vkDestroyInstance(vlkRenderer.instance, nullptr);
 
     glfwDestroyWindow(window);
-
     glfwTerminate();
 }
 

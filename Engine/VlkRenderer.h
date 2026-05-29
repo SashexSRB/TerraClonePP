@@ -18,6 +18,7 @@
 #include <GLFW/glfw3.h>
 
 #include "Lib/stb_truetype.h"
+#include <vk_mem_alloc.h>
 
 class VlkRenderer {
 public:
@@ -47,11 +48,6 @@ public:
     // =========================================================================
     // Font / UI State
     // =========================================================================
-
-    std::array<stbtt_bakedchar, 96> bakedChars;
-
-    int fontAtlasWidth  = 512;
-    int fontAtlasHeight = 512;
 
     glm::vec2 skyUVOffset = {0, 0};
 
@@ -99,10 +95,10 @@ public:
 
     struct MeshBuffer {
         VkBuffer vertexBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+        VmaAllocation vertexAllocation = VK_NULL_HANDLE;
 
         VkBuffer indexBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory indexMemory = VK_NULL_HANDLE;
+        VmaAllocation indexAllocation = VK_NULL_HANDLE;
 
         uint32_t indexCount = 0;
     };
@@ -203,7 +199,7 @@ public:
     // =========================================================================
 
     std::vector<VkBuffer> uniformBuffers;
-    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    std::vector<VmaAllocation> uniformAllocations;
     std::vector<void*> uniformBuffersMapped;
 
     VkDescriptorPool descriptorPool;
@@ -214,7 +210,7 @@ public:
     // =========================================================================
 
     VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
+    VmaAllocation textureImageAllocation;
 
     VkImageView textureImageView;
     VkSampler textureSampler;
@@ -224,7 +220,7 @@ public:
     // =========================================================================
 
     VkImage depthImage;
-    VkDeviceMemory depthImageMemory;
+    VmaAllocation depthImageAllocation;
     VkImageView depthImageView;
 
     // =========================================================================
@@ -232,7 +228,7 @@ public:
     // =========================================================================
 
     VkImage fontImage;
-    VkDeviceMemory fontImageMemory;
+    VmaAllocation fontImageAllocation;
 
     VkImageView fontImageView;
     VkSampler fontSampler;
@@ -242,10 +238,16 @@ public:
     // =========================================================================
 
     VkImage skyImage = VK_NULL_HANDLE;
-    VkDeviceMemory skyImageMemory = VK_NULL_HANDLE;
+    VmaAllocation skyImageAllocation = VK_NULL_HANDLE;
 
     VkImageView skyImageView = VK_NULL_HANDLE;
     VkSampler skySampler = VK_NULL_HANDLE;
+
+    // =========================================================================
+    // VMA Allocator
+    // =========================================================================
+
+    VmaAllocator vmaAllocator = VK_NULL_HANDLE;
 
     // =========================================================================
     // Initialization / Setup
@@ -258,6 +260,8 @@ public:
     void pickPhysicalDevice();
 
     void createLogicalDevice();
+
+    void createVmaAllocator();
 
     void createSwapChain(GLFWwindow* window);
 
@@ -406,9 +410,9 @@ public:
     void createBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage,
-        VkMemoryPropertyFlags properties,
+        VmaMemoryUsage memUsage,
         VkBuffer& buffer,
-        VkDeviceMemory& bufferMemory
+        VmaAllocation &allocation
     );
 
     void copyBuffer(
@@ -423,9 +427,9 @@ public:
         VkFormat format,
         VkImageTiling tiling,
         VkImageUsageFlags usage,
-        VkMemoryPropertyFlags properties,
+        VmaMemoryUsage memUsage,
         VkImage& image,
-        VkDeviceMemory& imageMemory
+        VmaAllocation& imageAllocation
     );
 
     void copyBufferToImage(
@@ -457,11 +461,6 @@ public:
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 
     bool isDeviceSuitable(VkPhysicalDevice device);
-
-    uint32_t findMemoryType(
-        uint32_t typeFilter,
-        VkMemoryPropertyFlags properties
-    );
 
     bool hasStencilComponent(VkFormat format);
 
