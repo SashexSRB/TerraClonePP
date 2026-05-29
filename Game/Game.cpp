@@ -359,18 +359,19 @@ void Game::updateBuffers(const CameraParams &cam) {
 
         // Clean up GPU buffers for chunks that are no longer loaded
         if (chunksChanged) {
-            std::unordered_set<std::string> validKeys;
-            for (auto &kv : world.chunks.getChunks())
-                validKeys.insert(world.chunks.meshKey(kv.second.chunkX, kv.second.chunkY));
-
-            std::vector<std::string> toRemove;
-            for (auto &kv : renderer.meshes) {
-                if (kv.first == "player" || kv.first == "inventory" || kv.first == "__sky__" || kv.first == "__text__") continue;
-                if (!validKeys.count(kv.first))
-                    toRemove.push_back(kv.first);
+            std::unordered_set<int64_t> validKeys;
+            for (auto &kv : world.chunks.getChunks()) {
+                validKeys.insert(kv.first);
             }
-            for (auto &key : toRemove)
+
+            std::vector<int64_t> toRemove;
+            for (auto &kv : renderer.chunkMeshes) {
+                if (!validKeys.count(kv.first)) toRemove.push_back(kv.first);
+            }
+
+            for (auto &key : toRemove) {
                 renderer.destroyMesh(key);
+            }
         }
 
         // Queue dirty chunks for off-thread meshing
@@ -397,11 +398,11 @@ void Game::updateBuffers(const CameraParams &cam) {
 
             for (auto &result : ready) {
                 if (result.vertices.empty() || result.indices.empty()) {
-                    renderer.destroyMesh(result.key);
+                    renderer.destroyMesh(result.chunkKey);
                     continue;
                 }
-                renderer.updateVertexBuffer(result.key, result.vertices);
-                renderer.updateIndexBuffer(result.key, result.indices);
+                renderer.updateVertexBuffer(result.chunkKey, result.vertices);
+                renderer.updateIndexBuffer(result.chunkKey, result.indices);
             }
         }
 
@@ -411,7 +412,7 @@ void Game::updateBuffers(const CameraParams &cam) {
         for (auto &kv : world.chunks.getChunks()) {
             const Chunk &chunk = kv.second;
             if (isChunkVisible(chunk.chunkX, chunk.chunkY, cam))
-                cachedChunkKeys.push_back(world.chunks.meshKey(chunk.chunkX, chunk.chunkY));
+                cachedChunkKeys.push_back(kv.first);
         }
         renderer.setChunkKeys(cachedChunkKeys);
 
@@ -518,7 +519,7 @@ void Game::meshWorkerThread() {
 
         for (auto& chunk : batch) {
             MeshResult result;
-            result.key = ChunkManager::meshKey(chunk.chunkX, chunk.chunkY);
+            result.chunkKey = ChunkManager::chunkKey(chunk.chunkX, chunk.chunkY);
             ChunkMesher::mesh(chunk, result.vertices, result.indices, world.chunks.getChunkSize(), scratch);
 
             std::lock_guard<std::mutex> lock(meshResultMutex);

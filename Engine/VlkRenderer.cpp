@@ -2,10 +2,10 @@
 #include "VlkValidator.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "../Lib/stb_truetype.h"
+#include "Lib/stb_truetype.h"
 
-#include "../Lib/stb_image.h"
-#include "../Game/Game.h"
+#include "Lib/stb_image.h"
+#include "Game/Game.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -14,10 +14,7 @@
 #include <limits>
 #include <set>
 #include <stdexcept>
-#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
-
-const int MAX_FRAMES_IN_FLIGHT = 2;
 
 // =========================================================================
 // Initialization / Setup
@@ -884,6 +881,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 
     for (const auto &key : chunkKeys)
         draw(key, commandBuffer);
+    
     draw("player", commandBuffer);
 
     // ── UI pipeline (depth OFF) ───────────────────────────────────────────
@@ -1058,11 +1056,84 @@ void VlkRenderer::destroyMesh(const std::string &name) {
     meshes.erase(it);
 }
 
-void VlkRenderer::setChunkKeys(const std::vector<std::string> &keys) {
+void VlkRenderer::setChunkKeys(const std::vector<int64_t>& keys) {
     chunkKeys = keys;
 }
 
 // Overloads
+void VlkRenderer::updateVertexBuffer(int64_t key, const std::vector<Vertex> &vertices) {
+    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+    MeshBuffer &mesh = chunkMeshes[key];
+
+    if (mesh.vertexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, mesh.vertexBuffer, nullptr);
+        vkFreeMemory(device, mesh.vertexMemory, nullptr);
+    }
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer, stagingBufferMemory);
+
+    void *data;
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), (size_t)bufferSize);
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mesh.vertexBuffer, mesh.vertexMemory);
+
+    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize);
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+void VlkRenderer::updateIndexBuffer(int64_t key, const std::vector<uint32_t> &indices) {
+    VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
+    MeshBuffer &mesh = chunkMeshes[key];
+
+    if (mesh.indexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, mesh.indexBuffer, nullptr);
+        vkFreeMemory(device, mesh.indexMemory, nullptr);
+    }
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer, stagingBufferMemory);
+
+    void *data;
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, indices.data(), (size_t)bufferSize);
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mesh.indexBuffer, mesh.indexMemory);
+
+    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize);
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+    mesh.indexCount = indices.size();
+}
+
+void VlkRenderer::destroyMesh(int64_t key) {
+    auto it = chunkMeshes.find(key);
+    if (it == chunkMeshes.end()) return;
+
+    MeshBuffer &mesh = it->second;
+    if (mesh.vertexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, mesh.vertexBuffer, nullptr);
+        vkFreeMemory(device, mesh.vertexMemory, nullptr);
+    }
+    if (mesh.indexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, mesh.indexBuffer, nullptr);
+        vkFreeMemory(device, mesh.indexMemory, nullptr);
+    }
+    chunkMeshes.erase(it);
+}
 
 // =========================================================================
 // Drawing
@@ -1071,6 +1142,21 @@ void VlkRenderer::setChunkKeys(const std::vector<std::string> &keys) {
 void VlkRenderer::draw(const std::string &name, VkCommandBuffer commandBuffer) {
     auto it = meshes.find(name);
     if (it == meshes.end()) return;
+
+    MeshBuffer &mesh = it->second;
+    if (mesh.indexCount == 0) return;
+
+    VkBuffer vertexBuffers[] = {mesh.vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(commandBuffer, mesh.indexCount, 1, 0, 0, 0);
+}
+
+// Overload
+void VlkRenderer::draw(int64_t key, VkCommandBuffer commandBuffer) {
+    auto it = chunkMeshes.find(key);
+    if (it == chunkMeshes.end()) return;
 
     MeshBuffer &mesh = it->second;
     if (mesh.indexCount == 0) return;

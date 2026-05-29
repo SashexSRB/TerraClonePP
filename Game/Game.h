@@ -22,7 +22,7 @@ struct InputState {
 };
 
 struct MeshResult {
-    std::string key;
+    int64_t chunkKey;
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 };
@@ -74,7 +74,8 @@ private:
     bool playerMeshDirty = true;
     bool inventoryMeshDirty = true;
     bool skyMeshDirty = true;
-    std::vector<std::string> cachedChunkKeys;
+
+    std::vector<int64_t> cachedChunkKeys;
 
     std::vector<QuadSpec> meshScratch;
 
