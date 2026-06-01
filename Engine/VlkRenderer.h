@@ -561,6 +561,17 @@ private:
     SDFFont sdfFont;
 
     // =========================================================================
+    // Frame rendering helper
+    // =========================================================================
+
+    void bindPipeline(
+        VkCommandBuffer cmd,
+        VkPipeline pipeline,
+        const VkViewport &viewport,
+        const VkRect2D &scissor
+    );
+
+    // =========================================================================
     // Texture creation helper
     // =========================================================================
 

@@ -707,43 +707,27 @@ void VlkRenderer::createDescriptorSets() {
         skyImageInfo.imageView   = skyImageView;
         skyImageInfo.sampler     = skySampler;
 
-        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
+        auto makeWrite = [&](uint32_t binding, VkDescriptorType type) {
+            VkWriteDescriptorSet w{};
+            w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w.dstSet = descriptorSets[i];
+            w.dstBinding = binding;
+            w.dstArrayElement = 0;
+            w.descriptorType = type;
+            w.descriptorCount = 1;
+            return w;
+        };
 
-        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet = descriptorSets[i];
-        descriptorWrites[0].dstBinding = 0;
-        descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &bufferInfo;
+        auto w0 = makeWrite(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER); w0.pBufferInfo = &bufferInfo;
+        auto w1 = makeWrite(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w1.pImageInfo = &imageInfo;
+        auto w2 = makeWrite(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w2.pImageInfo = &fontImageInfo;
+        auto w3 = makeWrite(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w3.pImageInfo = &skyImageInfo;
 
-        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = descriptorSets[i];
-        descriptorWrites[1].dstBinding = 1;
-        descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pImageInfo = &imageInfo;
-
-        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[2].dstSet = descriptorSets[i];
-        descriptorWrites[2].dstBinding = 2;
-        descriptorWrites[2].dstArrayElement = 0;
-        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[2].descriptorCount = 1;
-        descriptorWrites[2].pImageInfo = &fontImageInfo;
-
-        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[3].dstSet = descriptorSets[i];
-        descriptorWrites[3].dstBinding = 3;
-        descriptorWrites[3].dstArrayElement = 0;
-        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[3].descriptorCount = 1;
-        descriptorWrites[3].pImageInfo = &skyImageInfo;
+        std::array<VkWriteDescriptorSet, 4> descriptorWrites = {w0, w1, w2, w3};
 
         vkUpdateDescriptorSets(
             device,
-            static_cast<uint32_t>(descriptorWrites.size()),
+            descriptorWrites.size(),
             descriptorWrites.data(),
             0, nullptr
         );
@@ -901,34 +885,16 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
     scissor.extent = swapChainExtent;
 
     // ── Sky (UI pipeline, depth OFF, drawn first) ─────────────────────────
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, uiPipeline);
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipelineLayout, 0, 1, &descriptorSets[currentFrame],
-                            0, nullptr);
+    bindPipeline(commandBuffer, uiPipeline, viewport, scissor);
     drawSky(commandBuffer);
 
     // ── World pipeline (depth ON) ─────────────────────────────────────────
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipelineLayout, 0, 1, &descriptorSets[currentFrame],
-                            0, nullptr);
-
-    for (const auto &key : chunkKeys)
-        draw(key, commandBuffer);
-
+    bindPipeline(commandBuffer, graphicsPipeline, viewport, scissor);
+    for (const auto &key : chunkKeys) draw(key, commandBuffer);
     draw("player", commandBuffer);
 
     // ── UI pipeline (depth OFF) ───────────────────────────────────────────
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, uiPipeline);
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipelineLayout, 0, 1, &descriptorSets[currentFrame],
-                            0, nullptr);
+    bindPipeline(commandBuffer, uiPipeline, viewport, scissor);
     drawUI("inventory", commandBuffer);
     drawText(commandBuffer);
 
@@ -1704,6 +1670,22 @@ std::vector<char> VlkRenderer::readFile(const std::string &filename) {
 // #########################################################################
 // PRIVATE SECTION
 // #########################################################################
+
+// =========================================================================
+// Frame rendering helper
+// =========================================================================
+
+void VlkRenderer::bindPipeline(VkCommandBuffer cmd, VkPipeline pipeline, const VkViewport &viewport, const VkRect2D &scissor) {
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+    vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        pipelineLayout, 0, 1,
+        &descriptorSets[currentFrame],
+        0, nullptr
+    );
+}
 
 // =========================================================================
 // Texture creation helper
