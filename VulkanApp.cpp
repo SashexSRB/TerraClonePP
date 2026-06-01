@@ -124,6 +124,7 @@ void VulkanApp::cleanup() {
     vkDestroyCommandPool(vlkRenderer.device, vlkRenderer.commandPool, nullptr);
 
     vlkRenderer.destroyStagingBuffer();
+    vlkRenderer.cleanupMeshes();
     vmaDestroyAllocator(vlkRenderer.vmaAllocator);
 
     vkDestroyDevice(vlkRenderer.device, nullptr);

@@ -1650,6 +1650,28 @@ std::vector<char> VlkRenderer::readFile(const std::string &filename) {
     return buffer;
 }
 
+// =========================================================================
+// Cleanup
+// =========================================================================
+
+void VlkRenderer::cleanupMeshes() {
+    for (auto& [key, mesh] : meshes) {
+        if (mesh.vertexBuffer != VK_NULL_HANDLE)
+            vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
+        if (mesh.indexBuffer != VK_NULL_HANDLE)
+            vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
+    }
+    meshes.clear();
+
+    for (auto& [key, mesh] : chunkMeshes) {
+        if (mesh.vertexBuffer != VK_NULL_HANDLE)
+            vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
+        if (mesh.indexBuffer != VK_NULL_HANDLE)
+            vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
+    }
+    chunkMeshes.clear();
+}
+
 // #########################################################################
 // PRIVATE SECTION
 // #########################################################################
