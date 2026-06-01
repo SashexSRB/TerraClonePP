@@ -375,7 +375,6 @@ public:
 
     void destroyMesh(int64_t key);
 
-
     // =========================================================================
     // Drawing
     // =========================================================================
@@ -560,4 +559,22 @@ private:
     std::vector<TextDrawCall> textDrawCalls;
 
     SDFFont sdfFont;
+
+    // =========================================================================
+    // Drawing helpers
+    // =========================================================================
+
+    UIPushConstants makeOrthoPush();
+
+    void drawMesh(
+        const MeshBuffer& mesh,
+        VkCommandBuffer commandBuffer
+    );
+
+    void drawWithPush(
+        const std::string& name,
+        VkCommandBuffer commandBuffer,
+        const UIPushConstants& push
+    );
+
 };
