@@ -561,6 +561,16 @@ private:
     SDFFont sdfFont;
 
     // =========================================================================
+    // Sampler creating helper
+    // =========================================================================
+
+    VkSampler makeSampler(
+        const VkSamplerCreateInfo& info
+    );
+
+    VkSamplerCreateInfo defaultSamplerInfo();
+
+    // =========================================================================
     // Frame rendering helper
     // =========================================================================
 
