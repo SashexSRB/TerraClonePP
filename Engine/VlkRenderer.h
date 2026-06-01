@@ -561,6 +561,49 @@ private:
     SDFFont sdfFont;
 
     // =========================================================================
+    // Texture creation helper
+    // =========================================================================
+
+    void uploadTexture(
+        const void* pixels,
+        VkDeviceSize imageSize,
+        VkImage image,
+        VkFormat format,
+        uint32_t width,
+        uint32_t height
+    );
+
+    // =========================================================================
+    // Mesh management helpers
+    // =========================================================================
+
+    template<typename Key>
+    MeshBuffer& getMeshBuffer(
+        std::unordered_map<Key, MeshBuffer>& map,
+        const Key& key
+    );
+
+    template<typename Key>
+    void updateVertexBufferImpl(
+        std::unordered_map<Key, MeshBuffer>& map,
+        const Key& key,
+        const std::vector<Vertex>& vertices
+    );
+
+    template<typename Key>
+    void updateIndexBufferImpl(
+        std::unordered_map<Key, MeshBuffer>& map,
+        const Key& key,
+        const std::vector<uint32_t>& indices
+    );
+
+    template<typename Key>
+    void destroyMeshImpl(
+        std::unordered_map<Key, MeshBuffer>& map,
+        const Key& key
+    );
+
+    // =========================================================================
     // Drawing helpers
     // =========================================================================
 
@@ -576,5 +619,6 @@ private:
         VkCommandBuffer commandBuffer,
         const UIPushConstants& push
     );
+
 
 };

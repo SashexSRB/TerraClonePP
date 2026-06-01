@@ -577,53 +577,32 @@ void VlkRenderer::createDepthResources() {
 }
 
 void VlkRenderer::createTextureImage() {
-    int texWidth, texHeight, texChannels;
+    int w, h, ch;
 
-    stbi_uc *pixels = stbi_load(ASSET_PATH "textures.png", &texWidth,
-                                &texHeight, &texChannels, STBI_rgb_alpha);
-    VkDeviceSize imageSize = texWidth * texHeight * 4;
+    stbi_uc *pixels = stbi_load(
+        ASSET_PATH "textures.png",
+        &w, &h,
+        &ch,
+        STBI_rgb_alpha
+    );
 
-    if (texWidth % 8 != 0 || texHeight % 8 != 0)
+    VkDeviceSize imageSize = w * h * 4;
+
+    if (w % 8 != 0 || h % 8 != 0)
         throw std::runtime_error("Texture atlas dimensions must be multiplies of 8!");
 
     if (!pixels)
         throw std::runtime_error("Failed to load texture image!");
 
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingAllocation;
-
-    createBuffer(
-        imageSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY,
-        stagingBuffer, stagingAllocation
-    );
-
-    void *data;
-    vmaMapMemory(vmaAllocator, stagingAllocation, &data);
-    memcpy(data, pixels, static_cast<size_t>(imageSize));
-    vmaUnmapMemory(vmaAllocator, stagingAllocation);
-
-    stbi_image_free(pixels);
-
-    createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+    createImage(w, h, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VMA_MEMORY_USAGE_GPU_ONLY, textureImage, textureImageAllocation);
 
-
-    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                 VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    copyBufferToImage(stagingBuffer, textureImage,
-                      static_cast<uint32_t>(texWidth),
-                      static_cast<uint32_t>(texHeight));
-
-    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
+    uploadTexture(
+        pixels, imageSize,
+        textureImage, VK_FORMAT_R8G8B8A8_SRGB,
+        w, h
+    );
 }
 
 void VlkRenderer::createTextureImageView() {
@@ -1016,119 +995,31 @@ void VlkRenderer::cleanupSwapChain() {
 // =========================================================================
 
 void VlkRenderer::updateVertexBuffer(const std::string &name, const std::vector<Vertex> &vertices) {
-    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
-    MeshBuffer &mesh = meshes[name];
+    updateVertexBufferImpl(meshes, name, vertices);
+}
 
-    if (mesh.vertexBuffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
-
-    ensureStagingBuffer(stagingOffset + bufferSize);
-    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, vertices.data(), (size_t)bufferSize);
-
-    createBuffer(bufferSize,
-                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                 VMA_MEMORY_USAGE_GPU_ONLY,
-                 mesh.vertexBuffer, mesh.vertexAllocation);
-
-    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize, stagingOffset);
-    stagingOffset += bufferSize;
+void VlkRenderer::updateVertexBuffer(int64_t key, const std::vector<Vertex> &vertices) {
+    updateVertexBufferImpl(chunkMeshes, key, vertices);
 }
 
 void VlkRenderer::updateIndexBuffer(const std::string &name, const std::vector<uint32_t> &indices) {
-    VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
-    MeshBuffer &mesh = meshes[name];
+    updateIndexBufferImpl(meshes, name, indices);
+}
 
-    if (mesh.indexBuffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
-
-    ensureStagingBuffer(stagingOffset + bufferSize);
-    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, indices.data(), (size_t)bufferSize);
-
-    createBuffer(bufferSize,
-                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                 VMA_MEMORY_USAGE_GPU_ONLY,
-                 mesh.indexBuffer, mesh.indexAllocation);
-
-    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize, stagingOffset);
-    stagingOffset += bufferSize;
-
-    mesh.indexCount = indices.size();
+void VlkRenderer::updateIndexBuffer(int64_t key, const std::vector<uint32_t> &indices) {
+    updateIndexBufferImpl(chunkMeshes, key, indices);
 }
 
 void VlkRenderer::destroyMesh(const std::string &name) {
-    auto it = meshes.find(name);
+    destroyMeshImpl(meshes, name);
+}
 
-    if (it == meshes.end()) return;
-
-    MeshBuffer &mesh = it->second;
-    if (mesh.vertexBuffer != VK_NULL_HANDLE) {
-        vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
-    }
-
-    if (mesh.indexBuffer != VK_NULL_HANDLE) {
-        vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
-    }
-
-    meshes.erase(it);
+void VlkRenderer::destroyMesh(int64_t key) {
+    destroyMeshImpl(chunkMeshes, key);
 }
 
 void VlkRenderer::setChunkKeys(const std::vector<int64_t>& keys) {
     chunkKeys = keys;
-}
-
-// Overloads
-void VlkRenderer::updateVertexBuffer(int64_t key, const std::vector<Vertex> &vertices) {
-    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
-    MeshBuffer &mesh = chunkMeshes[key];
-
-    if (mesh.vertexBuffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
-
-    ensureStagingBuffer(stagingOffset + bufferSize);
-    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, vertices.data(), (size_t)bufferSize);
-
-    createBuffer(bufferSize,
-                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                 VMA_MEMORY_USAGE_GPU_ONLY,
-                 mesh.vertexBuffer, mesh.vertexAllocation);
-
-    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize, stagingOffset);
-    stagingOffset += bufferSize;
-}
-
-void VlkRenderer::updateIndexBuffer(int64_t key, const std::vector<uint32_t> &indices) {
-    VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
-    MeshBuffer &mesh = chunkMeshes[key];
-
-    if (mesh.indexBuffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
-
-    ensureStagingBuffer(stagingOffset + bufferSize);
-    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, indices.data(), (size_t)bufferSize);
-
-    createBuffer(bufferSize,
-                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                 VMA_MEMORY_USAGE_GPU_ONLY,
-                 mesh.indexBuffer, mesh.indexAllocation);
-
-    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize, stagingOffset);
-    stagingOffset += bufferSize;
-
-    mesh.indexCount = indices.size();
-}
-
-void VlkRenderer::destroyMesh(int64_t key) {
-    auto it = chunkMeshes.find(key);
-    if (it == chunkMeshes.end()) return;
-
-    MeshBuffer &mesh = it->second;
-    if (mesh.vertexBuffer != VK_NULL_HANDLE) {
-        vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
-    }
-    if (mesh.indexBuffer != VK_NULL_HANDLE) {
-        vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
-    }
-    chunkMeshes.erase(it);
 }
 
 // =========================================================================
@@ -1224,29 +1115,11 @@ void VlkRenderer::createFontTexture(const std::string& fontPath, int fontSize) {
 
     VkDeviceSize imageSize = W * H;
 
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingAllocation;
-    createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                 VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingAllocation);
-
-    void* data;
-    vmaMapMemory(vmaAllocator, stagingAllocation, &data);
-    memcpy(data, atlas.data(), imageSize);
-    vmaUnmapMemory(vmaAllocator, stagingAllocation);
-
     createImage(W, H, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VMA_MEMORY_USAGE_GPU_ONLY, fontImage, fontImageAllocation);
 
-    transitionImageLayout(fontImage, VK_FORMAT_R8_UNORM,
-                          VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copyBufferToImage(stagingBuffer, fontImage, W, H);
-    transitionImageLayout(fontImage, VK_FORMAT_R8_UNORM,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
+    uploadTexture(atlas.data(), imageSize, fontImage, VK_FORMAT_R8_UNORM, W, H);
 
     fontImageView = createImageView(fontImage, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -1317,35 +1190,27 @@ void VlkRenderer::setTextDrawCalls(const std::vector<TextDrawCall> &calls) {
 
 void VlkRenderer::createSkyTexture(const std::string &path) {
     int w, h, channels;
-    stbi_uc *pixels = stbi_load(path.c_str(), &w, &h, &channels, STBI_rgb_alpha);
+
+    stbi_uc *pixels = stbi_load(
+        path.c_str(),
+        &w, &h,
+        &channels,
+        STBI_rgb_alpha
+    );
+
     if (!pixels) throw std::runtime_error("Failed to load sky texture: " + path);
 
     VkDeviceSize imageSize = w * h * 4;
-
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingAllocation;
-    createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                 VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingAllocation);
-
-    void* data;
-    vmaMapMemory(vmaAllocator, stagingAllocation, &data);
-    memcpy(data, pixels, imageSize);
-    vmaUnmapMemory(vmaAllocator, stagingAllocation);
-    stbi_image_free(pixels);
 
     createImage(w, h, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VMA_MEMORY_USAGE_GPU_ONLY, skyImage, skyImageAllocation);
 
-    transitionImageLayout(skyImage, VK_FORMAT_R8G8B8A8_SRGB,
-                          VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copyBufferToImage(stagingBuffer, skyImage, w, h);
-    transitionImageLayout(skyImage, VK_FORMAT_R8G8B8A8_SRGB,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
+    uploadTexture(
+        pixels, imageSize,
+        skyImage, VK_FORMAT_R8G8B8A8_SRGB,
+        w, h
+    );
 
     skyImageView = createImageView(skyImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -1836,8 +1701,114 @@ std::vector<char> VlkRenderer::readFile(const std::string &filename) {
     return buffer;
 }
 
+// #########################################################################
+// PRIVATE SECTION
+// #########################################################################
+
 // =========================================================================
-// Private drawing helpers
+// Texture creation helper
+// =========================================================================
+
+void VlkRenderer::uploadTexture(const void* pixels, VkDeviceSize imageSize, VkImage image, VkFormat format, uint32_t width, uint32_t height) {
+    VkBuffer stagingBuffer;
+    VmaAllocation stagingAllocation;
+    createBuffer(
+        imageSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_ONLY,
+        stagingBuffer,
+        stagingAllocation
+    );
+
+    void* data;
+    vmaMapMemory(vmaAllocator, stagingAllocation, &data);
+    memcpy(data, pixels, imageSize);
+    vmaUnmapMemory(vmaAllocator, stagingAllocation);
+
+    transitionImageLayout(
+        image, format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
+
+    copyBufferToImage(stagingBuffer, image, width, height);
+
+    transitionImageLayout(
+        image, format,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
+
+    vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingAllocation);
+}
+
+// =========================================================================
+// Mesh management helpers
+// =========================================================================
+
+template<typename Key>
+VlkRenderer::MeshBuffer& VlkRenderer::getMeshBuffer(std::unordered_map<Key, MeshBuffer>& map, const Key& key) {
+    return map[key];
+}
+
+template<typename Key>
+void VlkRenderer::updateVertexBufferImpl(std::unordered_map<Key, MeshBuffer>& map, const Key& key, const std::vector<Vertex>& vertices) {
+    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+    MeshBuffer &mesh = map[key];
+
+    if (mesh.vertexBuffer != VK_NULL_HANDLE)
+        vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
+
+    ensureStagingBuffer(stagingOffset + bufferSize);
+    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, vertices.data(), bufferSize);
+
+    createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY, mesh.vertexBuffer, mesh.vertexAllocation
+    );
+
+    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize, stagingOffset);
+    stagingOffset += bufferSize;
+}
+
+template<typename Key>
+void VlkRenderer::updateIndexBufferImpl(std::unordered_map<Key, MeshBuffer>& map, const Key& key, const std::vector<uint32_t>& indices) {
+    VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
+    MeshBuffer &mesh = map[key];
+
+    if (mesh.indexBuffer != VK_NULL_HANDLE)
+        vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
+
+    ensureStagingBuffer(stagingOffset + bufferSize);
+    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, indices.data(), bufferSize);
+
+    createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY, mesh.indexBuffer, mesh.indexAllocation
+    );
+
+    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize, stagingOffset);
+    stagingOffset += bufferSize;
+    mesh.indexCount = indices.size();
+}
+
+template<typename Key>
+void VlkRenderer::destroyMeshImpl(std::unordered_map<Key, MeshBuffer>& map, const Key& key) {
+    auto it = map.find(key);
+    if (it == map.end()) return;
+
+    MeshBuffer& mesh = it->second;
+    if (mesh.vertexBuffer != VK_NULL_HANDLE)
+        vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
+    if (mesh.indexBuffer != VK_NULL_HANDLE)
+        vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
+    map.erase(it);
+}
+
+// =========================================================================
+// Drawing helpers
 // =========================================================================
 
 VlkRenderer::UIPushConstants VlkRenderer::makeOrthoPush() {
