@@ -951,19 +951,52 @@ void VlkRenderer::cleanupSwapChain() {
 // =========================================================================
 
 void VlkRenderer::updateVertexBuffer(const std::string &name, const std::vector<Vertex> &vertices) {
-    updateVertexBufferImpl(meshes, name, vertices);
+    auto& mesh = meshes[name];
+
+    uploadToGpuBuffer(
+        mesh.vertexBuffer,
+        mesh.vertexAllocation,
+        vertices,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+    );
+
 }
 
 void VlkRenderer::updateVertexBuffer(int64_t key, const std::vector<Vertex> &vertices) {
-    updateVertexBufferImpl(chunkMeshes, key, vertices);
+    auto& mesh = chunkMeshes[key];
+
+    uploadToGpuBuffer(
+        mesh.vertexBuffer,
+        mesh.vertexAllocation,
+        vertices,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+    );
 }
 
 void VlkRenderer::updateIndexBuffer(const std::string &name, const std::vector<uint32_t> &indices) {
-    updateIndexBufferImpl(meshes, name, indices);
+    auto& mesh = meshes[name];
+
+    uploadToGpuBuffer(
+        mesh.indexBuffer,
+        mesh.indexAllocation,
+        indices,
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+    );
+
+    mesh.indexCount = indices.size();
 }
 
 void VlkRenderer::updateIndexBuffer(int64_t key, const std::vector<uint32_t> &indices) {
-    updateIndexBufferImpl(chunkMeshes, key, indices);
+    auto& mesh = chunkMeshes[key];
+
+    uploadToGpuBuffer(
+        mesh.indexBuffer,
+        mesh.indexAllocation,
+        indices,
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+    );
+
+    mesh.indexCount = indices.size();
 }
 
 void VlkRenderer::destroyMesh(const std::string &name) {
@@ -1775,47 +1808,24 @@ VlkRenderer::MeshBuffer& VlkRenderer::getMeshBuffer(std::unordered_map<Key, Mesh
     return map[key];
 }
 
-template<typename Key>
-void VlkRenderer::updateVertexBufferImpl(std::unordered_map<Key, MeshBuffer>& map, const Key& key, const std::vector<Vertex>& vertices) {
-    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
-    MeshBuffer &mesh = map[key];
-
-    if (mesh.vertexBuffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
+template<typename T>
+void VlkRenderer::uploadToGpuBuffer(VkBuffer& buffer, VmaAllocation& allocation, const std::vector<T>& data, VkBufferUsageFlags useFlags) {
+    VkDeviceSize bufferSize = sizeof(T) * data.size();
+    if (buffer != VK_NULL_HANDLE)
+        vmaDestroyBuffer(vmaAllocator, buffer, allocation);
 
     ensureStagingBuffer(stagingOffset + bufferSize);
-    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, vertices.data(), bufferSize);
+    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, data.data(), bufferSize);
 
     createBuffer(
         bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY, mesh.vertexBuffer, mesh.vertexAllocation
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | useFlags,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        buffer, allocation
     );
 
-    copyBuffer(stagingBuffer, mesh.vertexBuffer, bufferSize, stagingOffset);
+    copyBuffer(stagingBuffer, buffer, bufferSize, stagingOffset);
     stagingOffset += bufferSize;
-}
-
-template<typename Key>
-void VlkRenderer::updateIndexBufferImpl(std::unordered_map<Key, MeshBuffer>& map, const Key& key, const std::vector<uint32_t>& indices) {
-    VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
-    MeshBuffer &mesh = map[key];
-
-    if (mesh.indexBuffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
-
-    ensureStagingBuffer(stagingOffset + bufferSize);
-    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, indices.data(), bufferSize);
-
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY, mesh.indexBuffer, mesh.indexAllocation
-    );
-
-    copyBuffer(stagingBuffer, mesh.indexBuffer, bufferSize, stagingOffset);
-    stagingOffset += bufferSize;
-    mesh.indexCount = indices.size();
 }
 
 template<typename Key>

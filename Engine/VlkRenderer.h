@@ -610,18 +610,12 @@ private:
         const Key& key
     );
 
-    template<typename Key>
-    void updateVertexBufferImpl(
-        std::unordered_map<Key, MeshBuffer>& map,
-        const Key& key,
-        const std::vector<Vertex>& vertices
-    );
-
-    template<typename Key>
-    void updateIndexBufferImpl(
-        std::unordered_map<Key, MeshBuffer>& map,
-        const Key& key,
-        const std::vector<uint32_t>& indices
+    template<typename T>
+    void uploadToGpuBuffer(
+        VkBuffer& buffer,
+        VmaAllocation& allocation,
+        const std::vector<T>& data,
+        VkBufferUsageFlags useFlags
     );
 
     template<typename Key>
