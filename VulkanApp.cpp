@@ -63,11 +63,15 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createSampler();
     vlkRenderer.createFontTexture(ASSET_PATH "ANDYB.TTF", 20);
     vlkRenderer.createSkyTexture(ASSET_PATH "sky.png");
+    vlkRenderer.createLightmapTexture(1, 1);
     vlkRenderer.createUniformBuffers();
     vlkRenderer.createDescriptorPool();
     vlkRenderer.createDescriptorSets();
     vlkRenderer.createCommandBuffers();
     vlkRenderer.createSyncObjects();
+
+    uint8_t white[4] = { 255, 255, 255, 255 };
+    vlkRenderer.updateLightmap(white, 1, 1);
 
     Registry::initialize();
 
@@ -96,6 +100,9 @@ void VulkanApp::cleanup() {
     vkDestroySampler(vlkRenderer.device, vlkRenderer.textureSampler, nullptr);
     vkDestroyImageView(vlkRenderer.device, vlkRenderer.textureImageView, nullptr);
     vmaDestroyImage(vlkRenderer.vmaAllocator, vlkRenderer.textureImage, vlkRenderer.textureImageAllocation);
+
+    // Lightmap
+    vlkRenderer.destroyLightmap();
 
     // Uniform buffers
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {

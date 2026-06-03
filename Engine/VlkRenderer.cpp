@@ -1314,24 +1314,11 @@ void VlkRenderer::updateLightmap(const uint8_t *pixels, int width, int height) {
 
     VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
 
-    // Temporary staging buffer - avoids touching persistent buffer which may be mid-batch for chunk meshes
-    VkBuffer tmpBuf;
-    VmaAllocation tmpAlloc;
-    createBuffer(
-        imageSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY,
-        tmpBuf, tmpAlloc
-    );
+    // Use persistent staging buffer instead of temp one
+    ensureStagingBuffer(stagingOffset + imageSize);
+    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, pixels, imageSize);
 
-    void* data;
-    vmaMapMemory(vmaAllocator, tmpAlloc, &data);
-    memcpy(data, pixels, imageSize);
-    vmaUnmapMemory(vmaAllocator, tmpAlloc);
-
-    // Single-time command: barrier to TRANSFER_DST, copy, barrier back
-    VkCommandBuffer cmd = beginSingleTimeCommands();
-
+    // Record barrier + copy into the open transfer command buffer
     VkImageMemoryBarrier toTransfer{};
     toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     toTransfer.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1343,21 +1330,19 @@ void VlkRenderer::updateLightmap(const uint8_t *pixels, int width, int height) {
     toTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
     toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-    vkCmdPipelineBarrier(cmd,
+    vkCmdPipelineBarrier(transferCommandBuffer,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0, 0, nullptr, 0, nullptr, 1, &toTransfer
-    );
+        0, 0, nullptr, 0, nullptr, 1, &toTransfer);
 
     VkBufferImageCopy region{};
+    region.bufferOffset = stagingOffset;
     region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.imageExtent = {
-        static_cast<uint32_t>(width),
-        static_cast<uint32_t>(height),
-        1
-    };
+    region.imageExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
+    vkCmdCopyBufferToImage(transferCommandBuffer, stagingBuffer, lightmapImage,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-    vkCmdCopyBufferToImage(cmd, tmpBuf, lightmapImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    stagingOffset += imageSize;
 
     VkImageMemoryBarrier toRead{};
     toRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1370,16 +1355,12 @@ void VlkRenderer::updateLightmap(const uint8_t *pixels, int width, int height) {
     toRead.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     toRead.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-    vkCmdPipelineBarrier(cmd,
+    vkCmdPipelineBarrier(transferCommandBuffer,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        0, 0, nullptr, 0, nullptr, 1, &toRead
-    );
+        0, 0, nullptr, 0, nullptr, 1, &toRead);
 
-    endSingleTimeCommands(cmd);
-    vmaDestroyBuffer(vmaAllocator, tmpBuf, tmpAlloc);
-
-    // Update descriptor sets for all frames so both in-flight frames see the new lightmap immediately
+    // Update descriptors immediately
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo info{};
         info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1390,7 +1371,6 @@ void VlkRenderer::updateLightmap(const uint8_t *pixels, int width, int height) {
         w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         w.dstSet = descriptorSets[i];
         w.dstBinding = 4;
-        w.dstArrayElement = 0;
         w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         w.descriptorCount = 1;
         w.pImageInfo = &info;
@@ -1405,7 +1385,7 @@ void VlkRenderer::destroyLightmap() {
     if (lightmapImageView != VK_NULL_HANDLE)
         vkDestroyImageView(device, lightmapImageView, nullptr);
     if (lightmapImage != VK_NULL_HANDLE)
-        vkDestroyImage(device, lightmapImage, nullptr);
+        vmaDestroyImage(vmaAllocator, lightmapImage, lightmapAllocation);
 
     lightmapSampler = VK_NULL_HANDLE;
     lightmapImageView = VK_NULL_HANDLE;
@@ -1546,7 +1526,14 @@ void VlkRenderer::transitionImageLayout(VkImage image, VkFormat format,
 
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else {
+    } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        // Used by createLightmapTexture to initialize a fresh image
+        // directly into the read layout before any data is uploaded
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage      = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }else {
         throw std::invalid_argument("Unsupported layer transition!");
     }
 

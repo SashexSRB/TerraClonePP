@@ -49,6 +49,8 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
     physicsThread = std::thread(&Game::gameLoopThread, this);
     std::cout << "[Game] Starting mesh thread...\n";
     meshThread = std::thread(&Game::meshWorkerThread, this);
+    std::cout << "[Game] Starting lighting thread...\n";
+    lightmapThread = std::thread(&Game::lightmapWorkerThread, this);
 }
 
 Game::~Game() {
@@ -62,6 +64,12 @@ Game::~Game() {
     if (meshThread.joinable())
         meshThread.join();
     std::cout << "[Game] Mesh thread stopped.\n";
+
+    lightmapThreadRunning = false;
+    lightmapCV.notify_all();
+    if (lightmapThread.joinable())
+        lightmapThread.join();
+    std::cout << "[Game] Lighting thread stopped.\n";
 }
 
 void Game::gameLoopThread() {
@@ -148,6 +156,7 @@ void Game::update(float deltaTime) {
     if (player.position != prevPos) {
         playerMeshDirty = true;
         skyMeshDirty = true;
+        lightmapDirty = true;
     }
 }
 
@@ -315,6 +324,7 @@ void Game::handleInput() {
                         mineTimer  = 0.0f;
                         miningTile = {-1, -1};
                         inventoryMeshDirty = true;
+                        lightmapDirty = true;
                     }
                 } else {
                     mineTimer  = 0.0f;
@@ -328,6 +338,7 @@ void Game::handleInput() {
                     world.setTile(tileCoords.x, tileCoords.y, t);
                     player.inventory.removeItem(activeSlot);
                     inventoryMeshDirty = true;
+                    lightmapDirty = true;
                 }
                 mineTimer  = 0.0f;
                 miningTile = {-1, -1};
@@ -356,6 +367,27 @@ void Game::updateBuffers(const CameraParams &cam) {
 
     {
         std::lock_guard<std::mutex> lock(renderMutex);
+
+        {
+            int camTileX = static_cast<int>(cam.position.x / Constants::TileSize);
+            int camTileY = static_cast<int>(cam.position.y / Constants::TileSize);
+            glm::ivec2 camTile = {camTileX, camTileY};
+
+            int tileDist = std::abs(camTile.x - lastLightmapCamTile.x) +
+                           std::abs(camTile.y - lastLightmapCamTile.y);
+
+            if (lightmapDirty || tileDist >= 2) {
+                int visX = static_cast<int>(cam.visibleWidth  / Constants::TileSize) + 2;
+                int visY = static_cast<int>(cam.visibleHeight / Constants::TileSize) + 2;
+
+                lightmapRequest = {camTileX, camTileY, visX, visY};
+                lightmapPending = true;
+                lightmapCV.notify_one();
+
+                lastLightmapCamTile = camTile;
+                lightmapDirty = false;
+            }
+        }
 
         renderer.beginTransferBatch();
 
@@ -465,6 +497,23 @@ void Game::updateBuffers(const CameraParams &cam) {
             inventoryMeshDirty = false;
         }
 
+        // Lightmap upload — now part of the batch, no GPU stall
+        if (lightmapReady.exchange(false)) {
+            renderer.updateLightmap(
+                lightmapBack.pixels.data(),
+                lightmapBack.width,
+                lightmapBack.height
+            );
+            renderer.lastLightmapOrigin = {
+                static_cast<float>(lightmapBack.originX),
+                static_cast<float>(lightmapBack.originY)
+            };
+            renderer.lastLightmapSize = {
+                static_cast<float>(lightmapBack.width),
+                static_cast<float>(lightmapBack.height)
+            };
+        }
+
         renderer.endTransferBatch();
     }
     renderer.updateUniformBuffer(renderer.currentFrame, cam);
@@ -528,5 +577,31 @@ void Game::meshWorkerThread() {
             std::lock_guard<std::mutex> lock(meshResultMutex);
             meshResults.push_back(std::move(result));
         }
+    }
+}
+
+void Game::lightmapWorkerThread() {
+    LightMap lm;
+    while (lightmapThreadRunning) {
+        {
+            std::unique_lock<std::mutex> lock(lightmapMutex);
+            lightmapCV.wait(lock, [this] {
+                return lightmapPending.load() || !lightmapThreadRunning;
+            });
+            if (!lightmapThreadRunning) break;
+            lightmapPending = false;
+        }
+
+        LightmapRequest req = lightmapRequest;
+        lm.compute(world, req.camTileX, req.camTileY, req.visX, req.visY);
+
+        lightmapBack.pixels  = lm.pixels;
+        lightmapBack.width   = lm.width;
+        lightmapBack.height  = lm.height;
+        lightmapBack.originX = lm.originX;
+        lightmapBack.originY = lm.originY;
+        lightmapReady = true;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 }

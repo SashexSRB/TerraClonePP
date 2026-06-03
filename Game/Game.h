@@ -2,6 +2,7 @@
 
 #include "Entity/Player.h"
 #include "World/World.h"
+#include "World/LightMap.h"
 #include "Engine/VlkRenderer.h"
 #include "Include/CameraParams.h"
 #include "World/WorldSerializer.h"
@@ -60,6 +61,28 @@ public:
 
     void meshWorkerThread();
 
+    // Lightmap threading
+    std::thread lightmapThread;
+    std::atomic<bool> lightmapThreadRunning{true};
+    std::mutex lightmapMutex;
+    std::condition_variable lightmapCV;
+    std::atomic<bool> lightmapPending{false};
+    std::atomic<bool> lightmapReady{false};
+
+    struct LightmapBuffer {
+        std::vector<uint8_t> pixels;
+        int width = 0, height = 0;
+        int originX = 0, originY = 0;
+    };
+    LightmapBuffer lightmapBack;
+
+    struct LightmapRequest {
+        int camTileX, camTileY, visX, visY;
+    };
+    LightmapRequest lightmapRequest;
+
+    void lightmapWorkerThread();
+
 private:
     InputState inputState;
     VlkRenderer &renderer;
@@ -74,6 +97,9 @@ private:
     bool playerMeshDirty = true;
     bool inventoryMeshDirty = true;
     bool skyMeshDirty = true;
+    bool lightmapDirty = true;
+
+    glm::ivec2 lastLightmapCamTile = {-9999, -9999};
 
     std::vector<int64_t> cachedChunkKeys;
 
@@ -88,6 +114,8 @@ private:
     glm::ivec2 miningTile = {-1, -1};
 
     WorldSerializer serializer;
+
+    LightMap lightMap;
 
     CameraParams computeCameraParams(const Player &player, const World &world,
                                      int windowWidth, int windowHeight,
