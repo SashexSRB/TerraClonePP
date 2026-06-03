@@ -23,13 +23,13 @@ void Registry::initialize() {
     items[1001] = {1001, "Copper Axe",     ItemType::Tool,   ToolType::Axe,     1, 2, false, 0.0f, TileBreakType::None, 0, 0.0f, 35, 1.0f, 0,  1};
     items[1002] = {1002, "Copper Sword",   ItemType::Weapon, ToolType::None,    2, 2, false, 0.0f, TileBreakType::None, 0, 0.0f, 0,  1.0f, 15, 1};
 
-    std::cout << "OK: Registry initialized with " << items.size() << " items.\n";
+    std::cout << "[ItemReg] Initialized with " << items.size() << " items.\n";
 }
 
 const GameItem& Registry::get(uint32_t id) {
     auto it = items.find(id);
     if (it == items.end()) {
-        throw std::runtime_error("Registry: unknown item id: "  + std::to_string(id));
+        throw std::runtime_error("[ItemReg] Unknown item id: "  + std::to_string(id));
     }
     return it->second;
 }

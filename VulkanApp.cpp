@@ -38,7 +38,7 @@ void VulkanApp::initWindow() {
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
     glfwSetScrollCallback(window, scrollCallback);
-    std::cout << "OK: Window Initialized.\n";
+    std::cout << "[GLFW] Window Initialized.\n";
 }
 
 void VulkanApp::initVulkan() {

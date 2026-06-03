@@ -55,7 +55,7 @@ void VlkRenderer::createInstance() {
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
         throw std::runtime_error("Failed to create instance!");
 
-    std::cout << "OK: Instance created.\n";
+    std::cout << "[Renderer] Instance created.\n";
 }
 
 void VlkRenderer::createSurface(GLFWwindow *window) {
@@ -81,7 +81,7 @@ void VlkRenderer::pickPhysicalDevice() {
     }
 
     if (physicalDevice == VK_NULL_HANDLE) throw std::runtime_error("Failed to find a suitable GPU");
-    std::cout << "OK: Physical Device Selected.\n";
+    std::cout << "[Renderer] Physical Device Selected.\n";
 }
 
 void VlkRenderer::createLogicalDevice() {
@@ -125,7 +125,7 @@ void VlkRenderer::createLogicalDevice() {
     vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 
-    std::cout << "OK: Logical device created.\n";
+    std::cout << "[Renderer] Logical device created.\n";
 }
 
 void VlkRenderer::createVmaAllocator() {
@@ -139,7 +139,7 @@ void VlkRenderer::createVmaAllocator() {
         throw std::runtime_error("Failed to create VMA allocator!");
     }
 
-    std::cout << "OK: VMA Allocator created!\n";
+    std::cout << "[Renderer] VMA Allocator created!\n";
 }
 
 void VlkRenderer::createStagingBuffer() {
@@ -153,7 +153,7 @@ void VlkRenderer::createStagingBuffer() {
     );
 
     vmaMapMemory(vmaAllocator, stagingAllocation, &stagingMapped);
-    std::cout << "OK: Persistent staging buffer created (" << (stagingBufferSize / 1024 / 1024) << "MB)\n";
+    std::cout << "[Renderer] Persistent staging buffer created (" << (stagingBufferSize / 1024 / 1024) << "MB)\n";
 }
 
 void VlkRenderer::createSwapChain(GLFWwindow *window) {
@@ -210,7 +210,7 @@ void VlkRenderer::createSwapChain(GLFWwindow *window) {
     swapChainImageFormat = surfaceFormat.format;
     swapChainExtent = extent;
 
-    std::cout << "OK: Swapchain created!\n";
+    std::cout << "[Renderer] Swapchain created!\n";
 }
 
 void VlkRenderer::createImageViews() {
@@ -219,7 +219,7 @@ void VlkRenderer::createImageViews() {
     for (size_t i = 0; i < swapChainImages.size(); i++) {
         swapChainImageViews[i] = createImageView( swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
     }
-    std::cout << "OK: Image views created!\n";
+    std::cout << "[Renderer] Image views created!\n";
 }
 
 void VlkRenderer::createRenderPass() {
@@ -283,7 +283,7 @@ void VlkRenderer::createRenderPass() {
     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
         throw std::runtime_error("Failed to create render pass!");
 
-    std::cout << "OK: Render Pass created!\n";
+    std::cout << "[Renderer] Render Pass created!\n";
 }
 
 void VlkRenderer::createDescriptorSetLayout() {
@@ -338,7 +338,7 @@ void VlkRenderer::createDescriptorSetLayout() {
     if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
         throw std::runtime_error("Failed to create descriptor set layout!");
 
-    std::cout << "OK: Descriptor Set Layout created!\n";
+    std::cout << "[Renderer] Descriptor Set Layout created!\n";
 }
 
 void VlkRenderer::createGraphicsPipeline() {
@@ -480,7 +480,7 @@ void VlkRenderer::createGraphicsPipeline() {
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
         throw std::runtime_error("Failed to create graphics pipeline!");
 
-    std::cout << "OK: Graphics Pipeline created!\n";
+    std::cout << "[Renderer] Graphics Pipeline created!\n";
 
     // ── UI pipeline (depth test OFF) ─────────────────────────────────────────
     VkPipelineDepthStencilStateCreateInfo uiDepthStencil{};
@@ -499,7 +499,7 @@ void VlkRenderer::createGraphicsPipeline() {
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
 
-    std::cout << "OK: UI Graphics Pipeline created!\n";
+    std::cout << "[Renderer] UI Graphics Pipeline created!\n";
 }
 
 void VlkRenderer::createFramebuffers() {
@@ -525,7 +525,7 @@ void VlkRenderer::createFramebuffers() {
             throw std::runtime_error("Failed to create framebuffer!");
     }
 
-    std::cout << "OK: Framebuffers created!\n";
+    std::cout << "[Renderer] Framebuffers created!\n";
 }
 
 void VlkRenderer::createCommandPool() {
@@ -539,7 +539,7 @@ void VlkRenderer::createCommandPool() {
     if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
         throw std::runtime_error("Failed to create command pool.");
 
-    std::cout << "OK: Command Pool created!\n";
+    std::cout << "[Renderer] Command Pool created!\n";
 }
 
 void VlkRenderer::createTransferResources() {
@@ -569,7 +569,7 @@ void VlkRenderer::createTransferResources() {
     if (vkCreateFence(device, &fenceInfo, nullptr, &transferFence) != VK_SUCCESS)
         throw std::runtime_error("Failed to create transfer fence!");
 
-    std::cout << "OK: Transfer resources created!\n";
+    std::cout << "[Renderer] Transfer resources created!\n";
 }
 
 void VlkRenderer::createDepthResources() {
@@ -582,7 +582,7 @@ void VlkRenderer::createDepthResources() {
     );
 
     depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-    std::cout << "OK: Depth resources created!\n";
+    std::cout << "[Renderer] Depth resources created!\n";
 }
 
 void VlkRenderer::createTextureImage(const std::string& path) {
@@ -600,7 +600,7 @@ void VlkRenderer::createTextureImage(const std::string& path) {
         texInfo.width, texInfo.height
     );
 
-    std::cout << "OK: Main texture atlas created!\n";
+    std::cout << "[Renderer] Main texture atlas created!\n";
 }
 
 void VlkRenderer::createTextureImageView() {
@@ -640,7 +640,7 @@ void VlkRenderer::createUniformBuffers() {
         vmaMapMemory(vmaAllocator, uniformAllocations[i], &uniformBuffersMapped[i]);
     }
 
-    std::cout << "OK: Uniform Buffers created!\n";
+    std::cout << "[Renderer] Uniform Buffers created!\n";
 }
 
 void VlkRenderer::createDescriptorPool() {
@@ -659,7 +659,7 @@ void VlkRenderer::createDescriptorPool() {
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
         throw std::runtime_error("Failed to create descriptor pool!");
 
-    std::cout << "OK: Descriptor pool created!\n";
+    std::cout << "[Renderer] Descriptor pool created!\n";
 }
 
 void VlkRenderer::createDescriptorSets() {
@@ -727,7 +727,7 @@ void VlkRenderer::createDescriptorSets() {
         );
     }
 
-    std::cout << "OK: Descriptor sets created!\n";
+    std::cout << "[Renderer] Descriptor sets created!\n";
 }
 
 void VlkRenderer::createCommandBuffers() {
@@ -742,7 +742,7 @@ void VlkRenderer::createCommandBuffers() {
     if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
         throw std::runtime_error("Failed to allocate command buffer!");
 
-    std::cout << "OK: Command Buffers created!\n";
+    std::cout << "[Renderer] Command Buffers created!\n";
 }
 
 void VlkRenderer::createSyncObjects() {
@@ -765,7 +765,7 @@ void VlkRenderer::createSyncObjects() {
             }
     }
 
-    std::cout << "OK: Sync Objects created!\n";
+    std::cout << "[Renderer] Sync Objects created!\n";
 }
 
 // =========================================================================
@@ -1140,7 +1140,7 @@ void VlkRenderer::createFontTexture(const std::string& fontPath, int fontSize) {
 
     fontSampler = makeSampler(info);
 
-    std::cout << "OK: SDF Font texture created!\n";
+    std::cout << "[Renderer] SDF Font texture created!\n";
 }
 
 void VlkRenderer::buildTextMesh(const std::vector<TextDrawCall> &calls) {
@@ -1218,7 +1218,7 @@ void VlkRenderer::createSkyTexture(const std::string &path) {
 
     skySampler = makeSampler(info);
 
-    std::cout << "OK: Sky texture created!\n";
+    std::cout << "[Renderer] Sky texture created!\n";
 }
 
 void VlkRenderer::updateSkyMesh(const CameraParams &cam, float parallaxFactor) {
@@ -1286,7 +1286,7 @@ void VlkRenderer::createLightmapTexture(int width, int height) {
     info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     lightmapSampler = makeSampler(info);
 
-    std::cout << "OK: Lightmap texture created (" << width << "x" << height << ")\n";
+    std::cout << "[Renderer] Lightmap texture created (" << width << "x" << height << ")\n";
 }
 
 void VlkRenderer::updateLightmap(const uint8_t *pixels, int width, int height) {
