@@ -3,19 +3,23 @@
 layout(binding = 1) uniform sampler2D texSampler;
 layout(binding = 2) uniform sampler2D fontSampler;
 layout(binding = 3) uniform sampler2D skySampler;
+layout(binding = 4) uniform sampler2D lightSampler;
 
 layout(push_constant) uniform PushConstants {
     mat4 proj;
     int  useUIProj;
     int  useFont;
     int  useSky;
-    int  _pad[1];
+    int  useLighting;
     vec2 skyUVOffset;
     vec2 skyUVScale;
+    vec2 lightmapOrigin;
+    vec2 lightmapSize;
 } push;
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
+layout(location = 2) in vec2 fragLightUV;
 layout(location = 0) out vec4 outColor;
 
 void main() {
@@ -40,6 +44,11 @@ void main() {
         vec2 uv = fragTexCoord * push.skyUVScale + push.skyUVOffset;
         outColor = texture(skySampler, uv);
     } else {
-        outColor = texture(texSampler, fragTexCoord);
+        vec4 col = texture(texSampler, fragTexCoord);
+        if (push.useLighting == 1) {
+            vec3 light = texture(lightSampler, clamp(fragLightUV, 0.0, 1.0)).rgb;
+            col.rgb *= light;
+        }
+        outColor = col;
     }
 }
