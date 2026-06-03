@@ -86,11 +86,13 @@ public:
         int useUIProj;
         int useFont;
         int useSky;
-
-        int _pad[1]; // Needed for 16-byte alignment
+        int useLighting;
 
         glm::vec2 skyUVOffset;
         glm::vec2 skyUVScale;
+
+        glm::vec2 lightmapOrigin;
+        glm::vec2 lightmapSize;
     };
 
     struct MeshBuffer {
@@ -211,7 +213,6 @@ public:
 
     VkImage textureImage;
     VmaAllocation textureImageAllocation;
-
     VkImageView textureImageView;
     VkSampler textureSampler;
 
@@ -229,7 +230,6 @@ public:
 
     VkImage fontImage;
     VmaAllocation fontImageAllocation;
-
     VkImageView fontImageView;
     VkSampler fontSampler;
 
@@ -239,9 +239,23 @@ public:
 
     VkImage skyImage = VK_NULL_HANDLE;
     VmaAllocation skyImageAllocation = VK_NULL_HANDLE;
-
     VkImageView skyImageView = VK_NULL_HANDLE;
     VkSampler skySampler = VK_NULL_HANDLE;
+
+    // =========================================================================
+    // Lightmap resources
+    // =========================================================================
+
+    VkImage       lightmapImage = VK_NULL_HANDLE;
+    VmaAllocation lightmapAllocation = VK_NULL_HANDLE;
+    VkImageView   lightmapImageView = VK_NULL_HANDLE;
+    VkSampler     lightmapSampler = VK_NULL_HANDLE;
+
+    int lightmapTexWidth = 0;
+    int lightmapTexHeight = 0;
+
+    glm::vec2 lastLightmapOrigin = { 0.0f, 0.0f };
+    glm::vec2 lastLightmapSize = { 1.0f, 1.0f };
 
     // =========================================================================
     // VMA Allocator
@@ -426,6 +440,23 @@ public:
         const CameraParams& cam,
         float parallaxFactor = 0.1f
     );
+
+    // =========================================================================
+    // Lightmap
+    // =========================================================================
+
+    void createLightmapTexture(
+        int width,
+        int height
+    );
+
+    void updateLightmap(
+        const uint8_t* pixels,
+        int width,
+        int height
+    );
+
+    void destroyLightmap();
 
     // =========================================================================
     // Buffers / Images / Memory

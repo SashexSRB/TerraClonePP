@@ -314,11 +314,19 @@ void VlkRenderer::createDescriptorSetLayout() {
     skyLayoutBinding.pImmutableSamplers = nullptr;
     skyLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {
+    VkDescriptorSetLayoutBinding lightmapLayoutBinding{};
+    lightmapLayoutBinding.binding = 4;
+    lightmapLayoutBinding.descriptorCount = 1;
+    lightmapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    lightmapLayoutBinding.pImmutableSamplers = nullptr;
+    lightmapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 5> bindings = {
         uboLayoutBinding,
         samplerLayoutBinding,
         fontSamplerBinding,
-        skyLayoutBinding
+        skyLayoutBinding,
+        lightmapLayoutBinding
     };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -650,7 +658,7 @@ void VlkRenderer::createDescriptorPool() {
     poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 3);
+    poolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 4);
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -697,6 +705,11 @@ void VlkRenderer::createDescriptorSets() {
         skyImageInfo.imageView   = skyImageView;
         skyImageInfo.sampler     = skySampler;
 
+        VkDescriptorImageInfo lightmapImageInfo{};
+        lightmapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        lightmapImageInfo.imageView   = lightmapImageView;
+        lightmapImageInfo.sampler     = lightmapSampler;
+
         auto makeWrite = [&](uint32_t binding, VkDescriptorType type) {
             VkWriteDescriptorSet w{};
             w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -712,8 +725,9 @@ void VlkRenderer::createDescriptorSets() {
         auto w1 = makeWrite(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w1.pImageInfo = &imageInfo;
         auto w2 = makeWrite(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w2.pImageInfo = &fontImageInfo;
         auto w3 = makeWrite(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w3.pImageInfo = &skyImageInfo;
+        auto w4 = makeWrite(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w4.pImageInfo = &lightmapImageInfo;
 
-        std::array<VkWriteDescriptorSet, 4> descriptorWrites = {w0, w1, w2, w3};
+        std::array<VkWriteDescriptorSet, 5> descriptorWrites = {w0, w1, w2, w3, w4};
 
         vkUpdateDescriptorSets(
             device,
@@ -880,8 +894,24 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 
     // ── World pipeline (depth ON) ─────────────────────────────────────────
     bindPipeline(commandBuffer, graphicsPipeline, viewport, scissor);
-    for (const auto &key : chunkKeys) draw(key, commandBuffer);
-    draw("player", commandBuffer);
+    {
+        UIPushConstants worldPush{};
+        worldPush.useUIProj      = 0;
+        worldPush.useFont        = 0;
+        worldPush.useSky         = 0;
+        worldPush.useLighting    = 1;
+        worldPush.lightmapOrigin = lastLightmapOrigin;
+        worldPush.lightmapSize   = lastLightmapSize;
+
+        vkCmdPushConstants(
+            commandBuffer, pipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0, sizeof(UIPushConstants), &worldPush
+        );
+
+        for (const auto& key : chunkKeys) draw(key, commandBuffer);
+        draw("player", commandBuffer);
+    }
 
     // ── UI pipeline (depth OFF) ───────────────────────────────────────────
     bindPipeline(commandBuffer, uiPipeline, viewport, scissor);
@@ -1232,6 +1262,156 @@ void VlkRenderer::updateSkyMesh(const CameraParams &cam, float parallaxFactor) {
     skyUVOffset.y = 0.0f;
     skyUVScaleX = static_cast<float>(swapChainExtent.width)  / 1024.0f;
     skyUVScaleY = static_cast<float>(swapChainExtent.height) / 512.0f;
+}
+
+// =========================================================================
+// Lightmap
+// =========================================================================
+
+void VlkRenderer::createLightmapTexture(int width, int height) {
+    destroyLightmap();
+
+    lightmapTexWidth = width;
+    lightmapTexHeight = height;
+
+    createImage(
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height),
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        lightmapImage, lightmapAllocation
+    );
+
+    // Put the image into SHADER_READ_ONLY_OPTIMAL immediately so the descriptor
+    // write in createDescriptorSets references a valid layout
+    transitionImageLayout(
+        lightmapImage,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
+
+    lightmapImageView = createImageView(
+        lightmapImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT
+    );
+
+    auto info = defaultSamplerInfo();
+    info.magFilter = VK_FILTER_LINEAR;
+    info.minFilter = VK_FILTER_LINEAR;
+    info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    lightmapSampler = makeSampler(info);
+
+    std::cout << "OK: Lightmap texture created (" << width << "x" << height << ")\n";
+}
+
+void VlkRenderer::updateLightmap(const uint8_t *pixels, int width, int height) {
+    if (width != lightmapTexWidth || height != lightmapTexHeight)
+        createLightmapTexture(width, height);
+
+    VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
+
+    // Temporary staging buffer - avoids touching persistent buffer which may be mid-batch for chunk meshes
+    VkBuffer tmpBuf;
+    VmaAllocation tmpAlloc;
+    createBuffer(
+        imageSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_ONLY,
+        tmpBuf, tmpAlloc
+    );
+
+    void* data;
+    vmaMapMemory(vmaAllocator, tmpAlloc, &data);
+    memcpy(data, pixels, imageSize);
+    vmaUnmapMemory(vmaAllocator, tmpAlloc);
+
+    // Single-time command: barrier to TRANSFER_DST, copy, barrier back
+    VkCommandBuffer cmd = beginSingleTimeCommands();
+
+    VkImageMemoryBarrier toTransfer{};
+    toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    toTransfer.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toTransfer.image = lightmapImage;
+    toTransfer.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    toTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    vkCmdPipelineBarrier(cmd,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &toTransfer
+    );
+
+    VkBufferImageCopy region{};
+    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    region.imageExtent = {
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height),
+        1
+    };
+
+    vkCmdCopyBufferToImage(cmd, tmpBuf, lightmapImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    VkImageMemoryBarrier toRead{};
+    toRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    toRead.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toRead.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    toRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toRead.image = lightmapImage;
+    toRead.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    toRead.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toRead.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(cmd,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &toRead
+    );
+
+    endSingleTimeCommands(cmd);
+    vmaDestroyBuffer(vmaAllocator, tmpBuf, tmpAlloc);
+
+    // Update descriptor sets for all frames so both in-flight frames see the new lightmap immediately
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        VkDescriptorImageInfo info{};
+        info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        info.imageView = lightmapImageView;
+        info.sampler = lightmapSampler;
+
+        VkWriteDescriptorSet w{};
+        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.dstSet = descriptorSets[i];
+        w.dstBinding = 4;
+        w.dstArrayElement = 0;
+        w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        w.descriptorCount = 1;
+        w.pImageInfo = &info;
+
+        vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
+    }
+}
+
+void VlkRenderer::destroyLightmap() {
+    if (lightmapSampler != VK_NULL_HANDLE)
+        vkDestroySampler(device, lightmapSampler, nullptr);
+    if (lightmapImageView != VK_NULL_HANDLE)
+        vkDestroyImageView(device, lightmapImageView, nullptr);
+    if (lightmapImage != VK_NULL_HANDLE)
+        vkDestroyImage(device, lightmapImage, nullptr);
+
+    lightmapSampler = VK_NULL_HANDLE;
+    lightmapImageView = VK_NULL_HANDLE;
+    lightmapImage = VK_NULL_HANDLE;
+    lightmapTexWidth = 0;
+    lightmapTexHeight = 0;
 }
 
 // =========================================================================
