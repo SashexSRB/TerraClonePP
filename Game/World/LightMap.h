@@ -8,7 +8,7 @@ struct LightMap {
     // =================================================================
     // Tuning constants
     // =================================================================
-    static constexpr float AMBIENT_FLOOR  = 0.045f;
+    static constexpr float AMBIENT_FLOOR  = 0.005f;
     static constexpr float SKY_BRIGHTNESS = 1.0f;
     static constexpr float DECAY_AIR      = 0.84f;
     static constexpr float DECAY_WALL     = 0.60f;
