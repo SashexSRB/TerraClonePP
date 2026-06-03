@@ -599,6 +599,8 @@ void VlkRenderer::createTextureImage(const std::string& path) {
         textureImage, VK_FORMAT_R8G8B8A8_SRGB,
         texInfo.width, texInfo.height
     );
+
+    std::cout << "OK: Main texture atlas created!\n";
 }
 
 void VlkRenderer::createTextureImageView() {
