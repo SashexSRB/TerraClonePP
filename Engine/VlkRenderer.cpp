@@ -4,6 +4,7 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "Lib/stb_truetype.h"
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "Lib/stb_image.h"
 #include "Game/Game.h"
 
@@ -584,32 +585,19 @@ void VlkRenderer::createDepthResources() {
     std::cout << "OK: Depth resources created!\n";
 }
 
-void VlkRenderer::createTextureImage() {
-    int w, h, ch;
+void VlkRenderer::createTextureImage(const std::string& path) {
+    TextureInfo texInfo = loadTextureImage(path);
 
-    stbi_uc *pixels = stbi_load(
-        ASSET_PATH "textures.png",
-        &w, &h,
-        &ch,
-        STBI_rgb_alpha
-    );
+    VkDeviceSize imageSize = texInfo.width * texInfo.height * 4;
 
-    VkDeviceSize imageSize = w * h * 4;
-
-    if (w % 8 != 0 || h % 8 != 0)
-        throw std::runtime_error("Texture atlas dimensions must be multiplies of 8!");
-
-    if (!pixels)
-        throw std::runtime_error("Failed to load texture image!");
-
-    createImage(w, h, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+    createImage(texInfo.width, texInfo.height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VMA_MEMORY_USAGE_GPU_ONLY, textureImage, textureImageAllocation);
 
     uploadTexture(
-        pixels, imageSize,
+        texInfo.pixels, imageSize,
         textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-        w, h
+        texInfo.width, texInfo.height
     );
 }
 
@@ -1205,27 +1193,18 @@ void VlkRenderer::setTextDrawCalls(const std::vector<TextDrawCall> &calls) {
 // =========================================================================
 
 void VlkRenderer::createSkyTexture(const std::string &path) {
-    int w, h, channels;
+    TextureInfo texInfo = loadTextureImage(path);
 
-    stbi_uc *pixels = stbi_load(
-        path.c_str(),
-        &w, &h,
-        &channels,
-        STBI_rgb_alpha
-    );
+    VkDeviceSize imageSize = texInfo.width * texInfo.height * 4;
 
-    if (!pixels) throw std::runtime_error("Failed to load sky texture: " + path);
-
-    VkDeviceSize imageSize = w * h * 4;
-
-    createImage(w, h, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+    createImage(texInfo.width, texInfo.height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VMA_MEMORY_USAGE_GPU_ONLY, skyImage, skyImageAllocation);
 
     uploadTexture(
-        pixels, imageSize,
+        texInfo.pixels, imageSize,
         skyImage, VK_FORMAT_R8G8B8A8_SRGB,
-        w, h
+        texInfo.width, texInfo.height
     );
 
     skyImageView = createImageView(skyImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1932,6 +1911,31 @@ void VlkRenderer::bindPipeline(VkCommandBuffer cmd, VkPipeline pipeline, const V
 // =========================================================================
 // Texture creation helper
 // =========================================================================
+
+VlkRenderer::TextureInfo VlkRenderer::loadTextureImage(const std::string &path) {
+    int w, h, ch;
+
+    stbi_uc *pixels = stbi_load(
+        path.c_str(),
+        &w, &h,
+        &ch,
+        STBI_rgb_alpha
+    );
+
+    if (!pixels)
+        throw std::runtime_error("Failed to load sky texture: " + path);
+
+    if (w % 8 != 0 || h % 8 != 0)
+        throw std::runtime_error("Texture atlas dimensions must be multiplies of 8!");
+
+    TextureInfo info{};
+    info.width = w;
+    info.height = h;
+    info.channels = ch;
+    info.pixels = pixels;
+
+    return info;
+}
 
 void VlkRenderer::uploadTexture(const void* pixels, VkDeviceSize imageSize, VkImage image, VkFormat format, uint32_t width, uint32_t height) {
     VkBuffer stagingBuffer;

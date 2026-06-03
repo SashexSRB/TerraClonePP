@@ -13,12 +13,13 @@
 
 #include <vulkan/vulkan_core.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #include "Lib/stb_truetype.h"
 #include <vk_mem_alloc.h>
+
+#include "stb_image.h"
 
 class VlkRenderer {
 public:
@@ -103,6 +104,13 @@ public:
         VmaAllocation indexAllocation = VK_NULL_HANDLE;
 
         uint32_t indexCount = 0;
+    };
+
+    struct TextureInfo {
+        int width;
+        int height;
+        int channels;
+        stbi_uc *pixels;
     };
 
     struct TextDrawCall {
@@ -318,7 +326,9 @@ public:
 
     void createDepthResources();
 
-    void createTextureImage();
+    void createTextureImage(
+        const std::string& path
+    );
 
     void createTextureImageView();
 
@@ -621,6 +631,10 @@ private:
     // =========================================================================
     // Texture creation helper
     // =========================================================================
+
+    TextureInfo loadTextureImage(
+        const std::string& path
+    );
 
     void uploadTexture(
         const void* pixels,
