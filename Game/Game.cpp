@@ -13,7 +13,9 @@
 
 VulkanApp app;
 
-const std::string SAVE_PATH = ASSET_PATH "/Saves/world.tcw";
+// =========================================================================
+// Construction / Lifetime
+// =========================================================================
 
 Game::Game(GLFWwindow *window, VlkRenderer &renderer)
     : renderer(renderer), window(window),
@@ -72,25 +74,9 @@ Game::~Game() {
     std::cout << "[Game] Lighting thread stopped.\n";
 }
 
-void Game::gameLoopThread() {
-    std::cout << "[Game] Thread started.\n";
-    auto lastTime = std::chrono::high_resolution_clock::now();
-
-    while (running) {
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
-        lastTime = currentTime;
-
-        // lock the world while updating
-        {
-            std::lock_guard<std::mutex> lock(worldMutex);
-            update(deltaTime);
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
-    }
-    std::cout << "[Game] Thread exiting.\n";
-}
+// =========================================================================
+// Public API
+// =========================================================================
 
 void Game::run() {
     double lastTime = glfwGetTime();
@@ -149,20 +135,53 @@ void Game::run() {
     }
 }
 
-void Game::update(float deltaTime) {
-    glm::vec2 prevPos = player.position;
-    applyMovement(player, inputState, deltaTime);
-    resolveCollisions(player, world, deltaTime);
-    if (player.position != prevPos) {
-        playerMeshDirty = true;
-        skyMeshDirty = true;
-        lightmapDirty = true;
+void Game::onScroll(double yoffset) {
+    if (yoffset > 0)
+        player.inventory.activeSlot = (player.inventory.activeSlot - 1 + INVENTORY_SLOTS) % INVENTORY_SLOTS;
+    else if (yoffset < 0)
+        player.inventory.activeSlot = (player.inventory.activeSlot + 1) % INVENTORY_SLOTS;
+
+    inventoryMeshDirty = true;
+}
+
+// #########################################################################
+// PRIVATE SECTION
+// #########################################################################
+
+// =========================================================================
+// Serialization
+// =========================================================================
+
+void Game::saveWorld() {
+    serializer.save(world, player.inventory);
+}
+
+void Game::loadOrGenerateWorld() {
+    if (!serializer.load(world, player.inventory)) {
+        std::cout << "[Game] No save found, generating new world...\n";
+        unsigned int seed = static_cast<unsigned int>(
+            std::chrono::system_clock::now().time_since_epoch().count()
+        );
+        world.generate(seed);
+
+        player.inventory.addItem(1002, 1); // Copper Sword
+        player.inventory.addItem(1000, 1); // Copper Pickaxe
+        player.inventory.addItem(1001, 1); // Copper Axe
     }
 }
 
-CameraParams Game::computeCameraParams(const Player &player, const World &world,
-                                       int windowWidth, int windowHeight,
-                                       float tileSize, float visibleTilesX) {
+// =========================================================================
+// Camera Helpers
+// =========================================================================
+
+CameraParams Game::computeCameraParams(
+    const Player &player,
+    const World &world,
+    int windowWidth,
+    int windowHeight,
+    float tileSize,
+    float visibleTilesX
+) {
     CameraParams cam;
 
     cam.visibleWidth = visibleTilesX * tileSize;
@@ -187,9 +206,14 @@ CameraParams Game::computeCameraParams(const Player &player, const World &world,
     return cam;
 }
 
-glm::ivec2 Game::screenToTile(double mouseX, double mouseY,
-                              const CameraParams &cam, int windowWidth,
-                              int windowHeight, float tileSize) {
+glm::ivec2 Game::screenToTile(
+    double mouseX,
+    double mouseY,
+    const CameraParams &cam,
+    int windowWidth,
+    int windowHeight,
+    float tileSize
+) {
     // Convert screen pixels to NDC (-1..1)
     float ndcX = static_cast<float>(mouseX) / windowWidth * 2.0f - 1.0f;
     float ndcY = static_cast<float>(mouseY) / windowHeight * 2.0f - 1.0f;
@@ -207,6 +231,21 @@ glm::ivec2 Game::screenToTile(double mouseX, double mouseY,
     tileY = std::clamp(tileY, 0, world.getHeight() - 1);
 
     return glm::ivec2(tileX, tileY);
+}
+
+// =========================================================================
+// Game Loop
+// =========================================================================
+
+void Game::update(float deltaTime) {
+    glm::vec2 prevPos = player.position;
+    applyMovement(player, inputState, deltaTime);
+    resolveCollisions(player, world, deltaTime);
+    if (player.position != prevPos) {
+        playerMeshDirty = true;
+        skyMeshDirty = true;
+        lightmapDirty = true;
+    }
 }
 
 void Game::handleInput() {
@@ -348,15 +387,6 @@ void Game::handleInput() {
         mineTimer  = 0.0f;
         miningTile = {-1, -1};
     }
-}
-
-void Game::onScroll(double yoffset) {
-    if (yoffset > 0)
-        player.inventory.activeSlot = (player.inventory.activeSlot - 1 + INVENTORY_SLOTS) % INVENTORY_SLOTS;
-    else if (yoffset < 0)
-        player.inventory.activeSlot = (player.inventory.activeSlot + 1) % INVENTORY_SLOTS;
-
-    inventoryMeshDirty = true;
 }
 
 void Game::updateBuffers(const CameraParams &cam) {
@@ -519,40 +549,29 @@ void Game::updateBuffers(const CameraParams &cam) {
     renderer.updateUniformBuffer(renderer.currentFrame, cam);
 }
 
-void Game::saveWorld() {
-    serializer.save(world, player.inventory);
-}
+void Game::gameLoopThread() {
+    std::cout << "[Game] Thread started.\n";
+    auto lastTime = std::chrono::high_resolution_clock::now();
 
-void Game::loadOrGenerateWorld() {
-    if (!serializer.load(world, player.inventory)) {
-        std::cout << "[Game] No save found, generating new world...\n";
-        unsigned int seed = static_cast<unsigned int>(
-            std::chrono::system_clock::now().time_since_epoch().count()
-        );
-        world.generate(seed);
+    while (running) {
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+        lastTime = currentTime;
 
-        player.inventory.addItem(1002, 1); // Copper Sword
-        player.inventory.addItem(1000, 1); // Copper Pickaxe
-        player.inventory.addItem(1001, 1); // Copper Axe
+        // lock the world while updating
+        {
+            std::lock_guard<std::mutex> lock(worldMutex);
+            update(deltaTime);
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
+    std::cout << "[Game] Thread exiting.\n";
 }
 
-bool Game::isChunkVisible(int chunkX, int chunkY, const CameraParams &cam) const {
-    float chunkWorldSize = world.chunks.getChunkSize() * Constants::TileSize;
-
-    float minX = chunkX * chunkWorldSize;
-    float minY = chunkY * chunkWorldSize;
-    float maxX = minX + chunkWorldSize;
-    float maxY = minY + chunkWorldSize;
-
-    float camMinX = cam.position.x - cam.visibleWidth / 2.0f;
-    float camMinY = cam.position.y - cam.visibleHeight / 2.0f;
-    float camMaxX = cam.position.x + cam.visibleWidth / 2.0f;
-    float camMaxY = cam.position.y + cam.visibleHeight / 2.0f;
-
-    return maxX >= camMinX && minX <= camMaxX &&
-           maxY >= camMinY && minY <= camMaxY;
-}
+// =========================================================================
+// Mesh Generation Thread
+// =========================================================================
 
 void Game::meshWorkerThread() {
     std::vector<QuadSpec> scratch;
@@ -580,6 +599,10 @@ void Game::meshWorkerThread() {
     }
 }
 
+// =========================================================================
+// Lightmap Thread
+// =========================================================================
+
 void Game::lightmapWorkerThread() {
     LightMap lm;
     while (lightmapThreadRunning) {
@@ -604,4 +627,25 @@ void Game::lightmapWorkerThread() {
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
+}
+
+// =========================================================================
+// Visibility
+// =========================================================================
+
+bool Game::isChunkVisible(int chunkX, int chunkY, const CameraParams &cam) const {
+    float chunkWorldSize = world.chunks.getChunkSize() * Constants::TileSize;
+
+    float minX = chunkX * chunkWorldSize;
+    float minY = chunkY * chunkWorldSize;
+    float maxX = minX + chunkWorldSize;
+    float maxY = minY + chunkWorldSize;
+
+    float camMinX = cam.position.x - cam.visibleWidth / 2.0f;
+    float camMinY = cam.position.y - cam.visibleHeight / 2.0f;
+    float camMaxX = cam.position.x + cam.visibleWidth / 2.0f;
+    float camMaxY = cam.position.y + cam.visibleHeight / 2.0f;
+
+    return maxX >= camMinX && minX <= camMaxX &&
+           maxY >= camMinY && minY <= camMaxY;
 }
