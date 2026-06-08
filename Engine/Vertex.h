@@ -4,12 +4,21 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
+/**
+ * GPU vertex format used for rendering.
+ *
+ * Defines position, depth, color, and texture coordinate layout
+ * shared between CPU-side mesh generation and Vulkan shaders.
+ */
 struct Vertex {
     glm::vec2 pos;
     float z;
     glm::vec3 color;
     glm::vec2 texCoord;
 
+    /**
+     * Returns Vulkan binding description for this vertex format.
+     */
     static VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = 0;
@@ -19,6 +28,9 @@ struct Vertex {
         return bindingDescription;
     }
 
+    /**
+     * Returns Vulkan attribute descriptions matching shader layout.
+     */
     static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
         std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
 
