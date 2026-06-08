@@ -6,6 +6,11 @@
 
 class World {
 public:
+
+    /**
+     * @param w World width in tiles
+     * @param h World height in tiles
+     */
     World(int w, int h);
 
     int getWidth()  const { return width; }
@@ -17,6 +22,11 @@ public:
     const Tile &getTile(int x, int y) const;
     void        setTile(int x, int y, Tile t);
 
+    /**
+     * Generates world terrain using the given seed.
+     *
+     * @param seed Deterministic seed used for procedural generation
+     */
     void generate(unsigned int seed);
 
     ChunkManager chunks;

@@ -22,12 +22,29 @@ struct LightMap {
     int width   = 0;
     int height  = 0;
 
-    // RGBA pixels for GPU upload (4 bytes per texel, row-major)
+    /**
+     * RGBA lightmap output buffer.
+     * Stored in row-major order (4 bytes per pixel).
+     * Used directly for GPU upload.
+     */
     std::vector<uint8_t> pixels;
 
     // =================================================================
     // Public interface
     // =================================================================
+
+    /**
+     * Computes light propagation for a visible world region.
+     *
+     * @param world World data source used for light occlusion and emission
+     * @param camTileX Camera center X position in tile space
+     * @param camTileY Camera center Y position in tile space
+     * @param visibleTilesX Horizontal lightmap coverage in tiles
+     * @param visibleTilesY Vertical lightmap coverage in tiles
+     *
+     * @note Output is written into `pixels` and region metadata
+     *       (originX/originY/width/height).
+     */
     template<typename WorldT>
     void compute(
         const WorldT& world,
