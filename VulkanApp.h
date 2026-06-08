@@ -14,7 +14,14 @@ class Game;
  */
 class VulkanApp {
 public:
+    /**
+     * @brief Creates a VulkanApp instance.
+     */
     VulkanApp();
+
+    /**
+     * @brief Destroys a VulkanApp instance.
+     */
     ~VulkanApp();
 
     /**
