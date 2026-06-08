@@ -11,6 +11,16 @@ struct QuadSpec {
     glm::vec3 color = {1.0f, 1.0f, 1.0f};
 };
 
+/**
+ * Computes normalized texture coordinates from a texture atlas.
+ *
+ * @param x Tile X index in atlas
+ * @param y Tile Y index in atlas
+ * @param atlasSize Size of the full texture atlas in pixels
+ * @param tileSize Size of a single tile in pixels
+ *
+ * @return Array of UV coordinates in clockwise order starting from top-left
+ */
 inline std::array<glm::vec2, 4> getTexCoords(int x, int y, int atlasSize = 256, int tileSize = 8) {
     float step = static_cast<float>(tileSize) / static_cast<float>(atlasSize);
 
@@ -29,6 +39,13 @@ inline std::array<glm::vec2, 4> getTexCoords(int x, int y, int atlasSize = 256, 
     };
 }
 
+/**
+ * Appends a quad to vertex and index buffers.
+ *
+ * @param vertices Output vertex buffer (appended to)
+ * @param indices Output index buffer (appended to)
+ * @param q Quad definition in world space
+ */
 inline void pushQuad(
     std::vector<Vertex> &vertices,
     std::vector<uint32_t> &indices,
@@ -42,6 +59,14 @@ inline void pushQuad(
     indices.insert(indices.end(), {base, base+1, base+2, base+2, base+3, base});
 }
 
+
+/**
+ * Builds a full mesh from a set of quads.
+ *
+ * @param vertices Output vertex buffer (cleared and rebuilt)
+ * @param indices Output index buffer (cleared and rebuilt)
+ * @param quads Input quad list used to generate geometry
+ */
 inline void buildMesh(std::vector<Vertex> &vertices, std::vector<uint32_t> &indices, const std::vector<QuadSpec> &quads) {
     vertices.clear();
     indices.clear();

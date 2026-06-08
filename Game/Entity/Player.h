@@ -16,4 +16,11 @@ struct Player {
     Inventory inventory;
 };
 
+/**
+ * Generates renderable geometry for the player entity.
+ *
+ * @param player Source player state used for positioning and rendering
+ * @param vertices Output vertex buffer (appended/filled by function)
+ * @param indices Output index buffer (appended/filled by function)
+ */
 void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
