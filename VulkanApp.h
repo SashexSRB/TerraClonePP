@@ -14,14 +14,7 @@ class Game;
  */
 class VulkanApp {
 public:
-    /**
-     * @brief Creates a VulkanApp instance.
-     */
     VulkanApp();
-
-    /**
-     * @brief Destroys a VulkanApp instance.
-     */
     ~VulkanApp();
 
     /**
@@ -37,24 +30,9 @@ public:
     bool framebufferResized = false;
 
 private:
-    /**
-     * @brief Initializes the full Vulkan renderer stack.
-     */
     void initVulkan();
-
-    /**
-     * @brief Main game loop.
-     */
     void mainLoop();
-
-    /**
-     * Is called after the main game loop to free up resources and end Vulkan and GLFW.
-     */
     void cleanup();
-
-    /**
-     * Initializes a GLFW instance.
-     */
     void initWindow();
 
     /**
@@ -75,19 +53,8 @@ private:
      */
     static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);
 
-    /**
-     * @brief Pointer to the GLFW Window instance.
-     */
     GLFWwindow *window;
-
-    /**
-     * @brief Vulkan Renderer.
-     */
     VlkRenderer vlkRenderer;
-
-    /**
-     * @brief Vulkan Validation member for printing errors and warnings.
-     */
     VlkValidator validator;
 
     /**
@@ -97,14 +64,7 @@ private:
      */
     Game *game;
 
-    /**
-     * @brief Initial window width.
-     */
     static constexpr uint32_t WIDTH           = 1600;
-
-    /**
-     * @brief Initial window height.
-     */
     static constexpr uint32_t HEIGHT          = 800;
 
     /**
