@@ -1466,6 +1466,24 @@ void VlkRenderer::destroySpriteAtlas() {
     spriteImage = VK_NULL_HANDLE;
 }
 
+void VlkRenderer::updateSpriteAtlasDescriptors() {
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        VkDescriptorImageInfo imgInfo{};
+        imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imgInfo.imageView   = spriteImageView;
+        imgInfo.sampler     = spriteSampler;
+
+        VkWriteDescriptorSet w{};
+        w.sType             = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.dstSet            = descriptorSets[i];
+        w.dstBinding        = 5;
+        w.descriptorType    = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        w.descriptorCount   = 1;
+        w.pImageInfo        = &imgInfo;
+        vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
+    }
+}
+
 // =========================================================================
 // Buffers / Images / Memory
 // =========================================================================
@@ -2153,21 +2171,4 @@ void VlkRenderer::drawWithPush(const std::string &name, VkCommandBuffer commandB
         sizeof(UIPushConstants),
         &reset
     );
-}
-
-void VlkRenderer::updateSpriteAtlasDescriptors() {
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        VkDescriptorImageInfo imgInfo{};
-        imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imgInfo.imageView   = spriteImageView;
-        imgInfo.sampler     = spriteSampler;
-        VkWriteDescriptorSet w{};
-        w.sType             = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        w.dstSet            = descriptorSets[i];
-        w.dstBinding        = 5;
-        w.descriptorType    = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        w.descriptorCount   = 1;
-        w.pImageInfo        = &imgInfo;
-        vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
-    }
 }

@@ -714,6 +714,11 @@ public:
      */
     void destroySpriteAtlas();
 
+    /**
+     * Helper to update sprite atlas descriptors
+     */
+    void updateSpriteAtlasDescriptors();
+
     // =========================================================================
     // Buffers / Images / Memory
     // =========================================================================
@@ -1003,9 +1008,4 @@ private:
         const UIPushConstants& push
     );
 
-    // =========================================================================
-    // Descriptor sets helper
-    // ========================================================================
-
-    void updateSpriteAtlasDescriptors();
 };
