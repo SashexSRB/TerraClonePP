@@ -58,22 +58,40 @@ void VulkanApp::initVulkan() {
     vlkRenderer.createTransferResources();
     vlkRenderer.createDepthResources();
     vlkRenderer.createFramebuffers();
-    vlkRenderer.createTextureImage(ASSET_PATH "textures.png");
+    vlkRenderer.createTextureImage(ASSET_PATH "Assets/Textures/textures.png");
     vlkRenderer.createTextureImageView();
     vlkRenderer.createSampler();
-    vlkRenderer.createFontTexture(ASSET_PATH "ANDYB.TTF", 20);
-    vlkRenderer.createSkyTexture(ASSET_PATH "sky.png");
+    vlkRenderer.createFontTexture(ASSET_PATH "Assets/Fonts/ANDYB.TTF", 20);
+    vlkRenderer.createSkyTexture(ASSET_PATH "Assets/Textures/sky.png");
     vlkRenderer.createLightmapTexture(1, 1);
+
+    {
+        uint8_t white[4] = {255, 255, 255, 255};
+        std::vector<uint8_t> placeholder(white, white + 4);
+        vlkRenderer.createSpriteAtlas(placeholder, 1, 1);
+    }
+
     vlkRenderer.createUniformBuffers();
     vlkRenderer.createDescriptorPool();
     vlkRenderer.createDescriptorSets();
+
+    Registry::initialize();
+    {
+        SpriteAtlas tmpAtlas;
+        for (auto& [id, item] : Registry::items)
+            if (!item.spritePath.empty())
+                tmpAtlas.add(id, item.spritePath);
+        tmpAtlas.add(SPRITE_PLAYER, ASSET_PATH "Assets/Sprites/player.png");
+        int aw = 0, ah = 0;
+        auto pixels = tmpAtlas.build(aw, ah);
+        vlkRenderer.createSpriteAtlas(pixels, aw, ah);
+    }
+
     vlkRenderer.createCommandBuffers();
     vlkRenderer.createSyncObjects();
 
     uint8_t white[4] = { 255, 255, 255, 255 };
     vlkRenderer.updateLightmap(white, 1, 1);
-
-    Registry::initialize();
 
     game = new Game(window, vlkRenderer);
 }
@@ -103,6 +121,9 @@ void VulkanApp::cleanup() {
 
     // Lightmap
     vlkRenderer.destroyLightmap();
+
+    // Sprite atlas
+    vlkRenderer.destroySpriteAtlas();
 
     // Uniform buffers
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {

@@ -322,12 +322,20 @@ void VlkRenderer::createDescriptorSetLayout() {
     lightmapLayoutBinding.pImmutableSamplers = nullptr;
     lightmapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 5> bindings = {
+    VkDescriptorSetLayoutBinding spriteLayoutBinding{};
+    spriteLayoutBinding.binding = 5;
+    spriteLayoutBinding.descriptorCount = 1;
+    spriteLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    spriteLayoutBinding.pImmutableSamplers = nullptr;
+    spriteLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 6> bindings = {
         uboLayoutBinding,
         samplerLayoutBinding,
         fontSamplerBinding,
         skyLayoutBinding,
-        lightmapLayoutBinding
+        lightmapLayoutBinding,
+        spriteLayoutBinding
     };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -648,7 +656,7 @@ void VlkRenderer::createDescriptorPool() {
     poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 4);
+    poolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 5);
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -700,6 +708,11 @@ void VlkRenderer::createDescriptorSets() {
         lightmapImageInfo.imageView   = lightmapImageView;
         lightmapImageInfo.sampler     = lightmapSampler;
 
+        VkDescriptorImageInfo spriteImageInfo{};
+        spriteImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        spriteImageInfo.imageView   = spriteImageView;
+        spriteImageInfo.sampler     = spriteSampler;
+
         auto makeWrite = [&](uint32_t binding, VkDescriptorType type) {
             VkWriteDescriptorSet w{};
             w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -716,8 +729,9 @@ void VlkRenderer::createDescriptorSets() {
         auto w2 = makeWrite(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w2.pImageInfo = &fontImageInfo;
         auto w3 = makeWrite(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w3.pImageInfo = &skyImageInfo;
         auto w4 = makeWrite(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w4.pImageInfo = &lightmapImageInfo;
+        auto w5 = makeWrite(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w5.pImageInfo = &spriteImageInfo;
 
-        std::array<VkWriteDescriptorSet, 5> descriptorWrites = {w0, w1, w2, w3, w4};
+        std::array<VkWriteDescriptorSet, 6> descriptorWrites = {w0, w1, w2, w3, w4, w5};
 
         vkUpdateDescriptorSets(
             device,
@@ -882,13 +896,10 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
     bindPipeline(commandBuffer, uiPipeline, viewport, scissor);
     drawSky(commandBuffer);
 
-    // ── World pipeline (depth ON) ─────────────────────────────────────────
+    // ── World & Player pipeline (depth ON) ─────────────────────────────────────────
     bindPipeline(commandBuffer, graphicsPipeline, viewport, scissor);
     {
         UIPushConstants worldPush{};
-        worldPush.useUIProj      = 0;
-        worldPush.useFont        = 0;
-        worldPush.useSky         = 0;
         worldPush.useLighting    = 1;
         worldPush.lightmapOrigin = lastLightmapOrigin;
         worldPush.lightmapSize   = lastLightmapSize;
@@ -900,12 +911,26 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
         );
 
         for (const auto& key : chunkKeys) draw(key, commandBuffer);
+    }
+
+    {
+        UIPushConstants playerPush{};
+        playerPush.useSprite     = 1;
+        playerPush.useLighting   = 1;
+        playerPush.lightmapOrigin = lastLightmapOrigin;
+        playerPush.lightmapSize   = lastLightmapSize;
+
+        vkCmdPushConstants(commandBuffer, pipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0, sizeof(UIPushConstants), &playerPush);
+
         draw("player", commandBuffer);
     }
 
     // ── UI pipeline (depth OFF) ───────────────────────────────────────────
     bindPipeline(commandBuffer, uiPipeline, viewport, scissor);
     drawUI("inventory", commandBuffer);
+    drawSprite("inventory_sprites", commandBuffer);
     drawText(commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
@@ -1062,6 +1087,12 @@ void VlkRenderer::drawSky(VkCommandBuffer commandBuffer) {
     push.skyUVOffset = skyUVOffset;
     push.skyUVScale = {skyUVScaleX, skyUVScaleY};
     drawWithPush("__sky__", commandBuffer, push);
+}
+
+void VlkRenderer::drawSprite(const std::string &name, VkCommandBuffer commandBuffer) {
+    auto push = makeOrthoPush();
+    push.useSprite = 1;
+    drawWithPush(name, commandBuffer, push);
 }
 
 // =========================================================================
@@ -1373,6 +1404,66 @@ void VlkRenderer::destroyLightmap() {
     lightmapImage = VK_NULL_HANDLE;
     lightmapTexWidth = 0;
     lightmapTexHeight = 0;
+}
+
+// =========================================================================
+// Sprite Atlas
+// =========================================================================
+
+void VlkRenderer::createSpriteAtlas(const std::vector<uint8_t> &pixels, int width, int height) {
+    destroySpriteAtlas();
+
+    VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
+
+    createImage(
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height),
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        spriteImage, spriteAllocation
+    );
+
+    uploadTexture(
+        pixels.data(), imageSize,
+        spriteImage, VK_FORMAT_R8G8B8A8_UNORM,
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height)
+    );
+
+    spriteImageView = createImageView(
+        spriteImage,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
+
+    auto info = defaultSamplerInfo();
+    info.magFilter = VK_FILTER_NEAREST;
+    info.minFilter = VK_FILTER_NEAREST;
+    info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    spriteSampler = makeSampler(info);
+
+    if (!descriptorSets.empty()) {
+        updateSpriteAtlasDescriptors();
+    }
+
+    std::cout << "[Renderer] Sprite atlas uploaded: (" << width << "x" << height << ")\n";
+}
+
+void VlkRenderer::destroySpriteAtlas() {
+    if (spriteSampler != VK_NULL_HANDLE)
+        vkDestroySampler(device, spriteSampler, nullptr);
+    if (spriteImageView != VK_NULL_HANDLE)
+        vkDestroyImageView(device, spriteImageView, nullptr);
+    if (spriteImage != VK_NULL_HANDLE)
+        vmaDestroyImage(vmaAllocator, spriteImage, spriteAllocation);
+
+    spriteSampler = VK_NULL_HANDLE;
+    spriteImageView = VK_NULL_HANDLE;
+    spriteImage = VK_NULL_HANDLE;
 }
 
 // =========================================================================
@@ -2062,4 +2153,21 @@ void VlkRenderer::drawWithPush(const std::string &name, VkCommandBuffer commandB
         sizeof(UIPushConstants),
         &reset
     );
+}
+
+void VlkRenderer::updateSpriteAtlasDescriptors() {
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        VkDescriptorImageInfo imgInfo{};
+        imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imgInfo.imageView   = spriteImageView;
+        imgInfo.sampler     = spriteSampler;
+        VkWriteDescriptorSet w{};
+        w.sType             = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.dstSet            = descriptorSets[i];
+        w.dstBinding        = 5;
+        w.descriptorType    = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        w.descriptorCount   = 1;
+        w.pImageInfo        = &imgInfo;
+        vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
+    }
 }

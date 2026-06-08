@@ -5,6 +5,8 @@
 #include <array>
 #include <atomic>
 
+#include "Rendering/SpriteAtlas.h"
+
 constexpr int INVENTORY_SLOTS = 10;
 constexpr int MAX_STACK_SIZE  = 999;
 
@@ -87,6 +89,11 @@ struct Inventory {
  * @param vertices Output vertex buffer (cleared/filled)
  * @param indices Output index buffer (cleared/filled)
  */
-void generateInventoryVertices(const Inventory &inventory,
-                               std::vector<Vertex> &vertices,
-                               std::vector<uint32_t> &indices);
+void generateInventoryVertices(
+    const Inventory& inventory,
+    std::vector<Vertex>& tileVerts,
+    std::vector<uint32_t>& tileIndices,
+    std::vector<Vertex>& spriteVerts,
+    std::vector<uint32_t>& spriteIndices,
+    const SpriteAtlas &atlas
+);

@@ -46,6 +46,9 @@ struct GameItem {
     int           texX          = 0;
     int           texY          = 0;
 
+    // Sprite path - set for items/tools/weapons that use separate sprites.
+    std::string   spritePath    = "";
+
     // Item properties (only if itemType == Tile or Wall)
     bool          isSolid       = false;
     float         zValue        = 0;

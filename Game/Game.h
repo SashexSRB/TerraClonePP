@@ -15,6 +15,7 @@
 #include <condition_variable>
 
 #include "Rendering/MeshUtils.h"
+#include "Rendering/SpriteAtlas.h"
 
 /**
  * @brief Represents current input state for gameplay actions.
@@ -83,6 +84,7 @@ public:
 
     Player player;
     World world;
+    SpriteAtlas spriteAtlas;
 
     // =========================================================================
     // Public API
@@ -155,6 +157,13 @@ private:
     glm::ivec2 lastLightmapCamTile = {-9999, -9999};
 
     LightMap lightMap;
+
+    // =========================================================================
+    // Sprite atlas
+    // =========================================================================
+
+    std::vector<Vertex> inventorySpriteVerts;
+    std::vector<uint32_t> inventorySpriteIndices;
 
     // =========================================================================
     // Gameplay State

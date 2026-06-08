@@ -45,6 +45,13 @@ Game::Game(GLFWwindow *window, VlkRenderer &renderer)
             Constants::TileSize, Constants::VisibleTilesX
     );
 
+    for (auto& [id, item] : Registry::items) {
+        if (!item.spritePath.empty()) spriteAtlas.add(id, item.spritePath);
+    }
+    spriteAtlas.add(SPRITE_PLAYER, ASSET_PATH "Assets/Sprites/player.png");
+    int aw, ah;
+    spriteAtlas.build(aw, ah);
+
     updateBuffers(cam);
 
     std::cout << "[Game] Starting physics thread...\n";
@@ -488,7 +495,7 @@ void Game::updateBuffers(const CameraParams &cam) {
 
         // Player mesh
         if (playerMeshDirty) {
-            generatePlayerVertices(player, playerVertices, playerIndices);
+            generatePlayerVertices(player, playerVertices, playerIndices, spriteAtlas);
             renderer.updateVertexBuffer("player", playerVertices);
             renderer.updateIndexBuffer("player", playerIndices);
             playerMeshDirty = false;
@@ -496,12 +503,16 @@ void Game::updateBuffers(const CameraParams &cam) {
 
         // Inventory and text mesh
         if (inventoryMeshDirty) {
-            generateInventoryVertices(player.inventory, inventoryVertices, inventoryIndices);
-            if (!inventoryVertices.empty() && !inventoryIndices.empty()) {
+            generateInventoryVertices(player.inventory, inventoryVertices, inventoryIndices, inventorySpriteVerts, inventorySpriteIndices, spriteAtlas);
+            if (!inventoryVertices.empty())
                 renderer.updateVertexBuffer("inventory", inventoryVertices);
+            if (!inventoryIndices.empty())
                 renderer.updateIndexBuffer("inventory", inventoryIndices);
+            if (!inventorySpriteVerts.empty()) {
+                renderer.updateVertexBuffer("inventory_sprites", inventorySpriteVerts);
+                renderer.updateIndexBuffer("inventory_sprites", inventorySpriteIndices);
             } else {
-                renderer.destroyMesh("inventory");
+                renderer.destroyMesh("inventory_sprites");
             }
 
             std::vector<VlkRenderer::TextDrawCall> textCalls;

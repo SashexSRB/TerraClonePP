@@ -101,13 +101,15 @@ set(TEXTURE_OUTPUTS)
 foreach(TEXTURE ${TEXTURE_SOURCES})
     get_filename_component(FILENAME ${TEXTURE} NAME)
 
-    set(DEST_FILE "${CMAKE_BINARY_DIR}/${FILENAME}")
+    set(DEST_FILE "${CMAKE_BINARY_DIR}/Assets/Textures/${FILENAME}")
 
     add_custom_command(
             OUTPUT ${DEST_FILE}
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                    "${CMAKE_BINARY_DIR}/Assets/Textures"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${TEXTURE}
-            ${DEST_FILE}
+                    ${TEXTURE}
+                    ${DEST_FILE}
             DEPENDS ${TEXTURE}
             COMMENT "Copying ${FILENAME}"
     )
@@ -118,13 +120,47 @@ endforeach()
 add_custom_target(Textures ALL DEPENDS ${TEXTURE_OUTPUTS})
 add_dependencies(TerraClonePP Textures)
 
+# ─── Sprites ───────────────────────────────────────────────────────────────
+
+file(GLOB SPRITE_SOURCES
+        "${CMAKE_SOURCE_DIR}/Game/Assets/Sprites/*"
+)
+
+set(SPRITE_OUTPUTS)
+
+foreach(SPRITE ${SPRITE_SOURCES})
+    get_filename_component(FILENAME ${SPRITE} NAME)
+
+    set(DEST_FILE "${CMAKE_BINARY_DIR}/Assets/Sprites/${FILENAME}")
+
+    add_custom_command(
+            OUTPUT ${DEST_FILE}
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                    "${CMAKE_BINARY_DIR}/Assets/Sprites"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${SPRITE}
+                    ${DEST_FILE}
+            DEPENDS ${SPRITE}
+            COMMENT "Copying ${FILENAME}"
+    )
+
+    list(APPEND SPRITE_OUTPUTS ${DEST_FILE})
+endforeach()
+
+add_custom_target(Sprites ALL DEPENDS ${SPRITE_OUTPUTS})
+add_dependencies(TerraClonePP Sprites)
+
 # ─── Fonts ───────────────────────────────────────────────────────────────
 set(FONT_SOURCE ${CMAKE_SOURCE_DIR}/Game/Assets/Fonts/ANDYB.TTF)
-set(FONT_DEST   ${CMAKE_BINARY_DIR}/ANDYB.TTF)
+set(FONT_DEST   ${CMAKE_BINARY_DIR}/Assets/Fonts/ANDYB.TTF)
 
 add_custom_command(
         OUTPUT  ${FONT_DEST}
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FONT_SOURCE} ${FONT_DEST}
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+                "${CMAKE_BINARY_DIR}/Assets/Fonts"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${FONT_SOURCE}
+                ${FONT_DEST}
         DEPENDS ${FONT_SOURCE}
         COMMENT "Copying font"
 )

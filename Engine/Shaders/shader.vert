@@ -16,6 +16,8 @@ layout(push_constant) uniform PushConstants {
     vec2 skyUVScale;
     vec2 lightmapOrigin;
     vec2 lightmapSize;
+    int useSprite;
+    int _pad[3];
 } push;
 
 layout(location = 0) in vec2 inPosition;

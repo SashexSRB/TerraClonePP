@@ -39,6 +39,10 @@ inline std::array<glm::vec2, 4> getTexCoords(int x, int y, int atlasSize = 256, 
     };
 }
 
+inline std::array<glm::vec2, 4> getSpriteCoords(float u0, float v0, float u1, float v1) {
+    return {{{u0, v0}, {u1, v0}, {u1, v1}, {u0, v1}}};
+}
+
 /**
  * Appends a quad to vertex and index buffers.
  *

@@ -105,6 +105,9 @@ public:
 
         glm::vec2 lightmapOrigin;
         glm::vec2 lightmapSize;
+
+        int useSprite;
+        int _pad[3];
     };
 
     struct MeshBuffer {
@@ -275,6 +278,15 @@ public:
 
     glm::vec2 lastLightmapOrigin = { 0.0f, 0.0f };
     glm::vec2 lastLightmapSize = { 1.0f, 1.0f };
+
+    // =========================================================================
+    // Sprite Atlas Resources
+    // =========================================================================
+
+    VkImage spriteImage = VK_NULL_HANDLE;
+    VmaAllocation spriteAllocation = VK_NULL_HANDLE;
+    VkImageView spriteImageView = VK_NULL_HANDLE;
+    VkSampler spriteSampler = VK_NULL_HANDLE;
 
     // =========================================================================
     // VMA Allocator
@@ -591,6 +603,14 @@ public:
         VkCommandBuffer commandBuffer
     );
 
+    /**
+     * Renders item sprites
+     */
+    void drawSprite(
+        const std::string& name,
+        VkCommandBuffer commandBuffer
+    );
+
     // =========================================================================
     // Text / Font
     // =========================================================================
@@ -671,6 +691,28 @@ public:
      * Destroys lightmap GPU resources.
      */
     void destroyLightmap();
+
+    // =========================================================================
+    // Sprite Atlas
+    // =========================================================================
+
+    /**
+     * Creates GPU texture atlas for the sprites
+     *
+     * @param pixels Raw texture pixel data
+     * @param width Texture width
+     * @param height Texture height
+     */
+    void createSpriteAtlas(
+        const std::vector<uint8_t>& pixels,
+        int width,
+        int height
+    );
+
+    /**
+     * Destroys sprite atlas GPU resources
+     */
+    void destroySpriteAtlas();
 
     // =========================================================================
     // Buffers / Images / Memory
@@ -960,4 +1002,10 @@ private:
         VkCommandBuffer commandBuffer,
         const UIPushConstants& push
     );
+
+    // =========================================================================
+    // Descriptor sets helper
+    // ========================================================================
+
+    void updateSpriteAtlasDescriptors();
 };

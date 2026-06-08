@@ -2,6 +2,7 @@
 
 #include "Constants.h"
 #include "UI/Inventory.h"
+#include "Rendering/SpriteAtlas.h"
 #include <glm/glm.hpp>
 
 struct Player {
@@ -23,4 +24,4 @@ struct Player {
  * @param vertices Output vertex buffer (appended/filled by function)
  * @param indices Output index buffer (appended/filled by function)
  */
-void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
+void generatePlayerVertices(const Player &player, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices, const SpriteAtlas& atlas);
