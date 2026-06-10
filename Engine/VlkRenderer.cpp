@@ -1755,7 +1755,7 @@ bool VlkRenderer::hasStencilComponent(VkFormat format) {
     return false;
 }
 
-VlkRenderer::QueueFamilyIndices VlkRenderer::findQueueFamilies(VkPhysicalDevice device) {
+QueueFamilyIndices VlkRenderer::findQueueFamilies(VkPhysicalDevice device) {
     QueueFamilyIndices indices;
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
@@ -1780,7 +1780,7 @@ VlkRenderer::QueueFamilyIndices VlkRenderer::findQueueFamilies(VkPhysicalDevice 
     return indices;
 }
 
-VlkRenderer::SwapChainSupportDetails VlkRenderer::querySwapChainSupport(VkPhysicalDevice device) {
+SwapChainSupportDetails VlkRenderer::querySwapChainSupport(VkPhysicalDevice device) {
     SwapChainSupportDetails details;
 
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
@@ -2027,7 +2027,7 @@ void VlkRenderer::bindPipeline(VkCommandBuffer cmd, VkPipeline pipeline, const V
 // Texture creation helper
 // =========================================================================
 
-VlkRenderer::TextureInfo VlkRenderer::loadTextureImage(const std::string &path) {
+TextureInfo VlkRenderer::loadTextureImage(const std::string &path) {
     int w, h, ch;
 
     stbi_uc *pixels = stbi_load(
@@ -2090,7 +2090,7 @@ void VlkRenderer::uploadTexture(const void* pixels, VkDeviceSize imageSize, VkIm
 // =========================================================================
 
 template<typename Key>
-VlkRenderer::MeshBuffer& VlkRenderer::getMeshBuffer(std::unordered_map<Key, MeshBuffer>& map, const Key& key) {
+MeshBuffer& VlkRenderer::getMeshBuffer(std::unordered_map<Key, MeshBuffer>& map, const Key& key) {
     return map[key];
 }
 
@@ -2131,7 +2131,7 @@ void VlkRenderer::destroyMeshImpl(std::unordered_map<Key, MeshBuffer>& map, cons
 // Drawing helpers
 // =========================================================================
 
-VlkRenderer::UIPushConstants VlkRenderer::makeOrthoPush() {
+UIPushConstants VlkRenderer::makeOrthoPush() {
     UIPushConstants push{};
     push.useUIProj = 1;
     push.proj = glm::mat4(1.0f);

@@ -4,6 +4,7 @@
 #include "Items/Item.h"
 #include "VulkanApp.h"
 #include "World/ChunkMesher.h"
+#include "Engine/VlkRendererTypes.h"
 
 #include <iostream>
 #include <algorithm>
@@ -515,7 +516,7 @@ void Game::updateBuffers(const CameraParams &cam) {
                 renderer.destroyMesh("inventory_sprites");
             }
 
-            std::vector<VlkRenderer::TextDrawCall> textCalls;
+            std::vector<TextDrawCall> textCalls;
             for (int i = 0; i < INVENTORY_SLOTS; ++i) {
                 if (player.inventory.slots[i].itemId == 1000 ||
                     player.inventory.slots[i].itemId == 1001 ||
