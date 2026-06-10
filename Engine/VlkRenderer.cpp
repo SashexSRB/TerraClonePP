@@ -21,6 +21,10 @@
 // Initialization / Setup
 // =========================================================================
 
+VlkRenderer::VlkRenderer() {
+    // Connect the subsystems
+}
+
 void VlkRenderer::createInstance() {
     if (validator.enableValidationLayers && !validator.checkValidationLayerSupport())
         throw std::runtime_error("Validation layers requested, but not available");
