@@ -3,14 +3,17 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
+class VlkRenderer;
+
 /**
  * Vulkan validation and debug utilities wrapper.
  *
  * Responsible for enabling validation layers and managing
  * the Vulkan debug messenger used for runtime error reporting.
  */
-class VlkValidatorSubsys {
+class VlkValSubsys {
 public:
+    VlkRenderer* r = nullptr;
 
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
@@ -81,4 +84,4 @@ public:
 /**
  * Global validator instance used by the application.
  */
-extern VlkValidatorSubsys validator;
+extern VlkValSubsys validator;

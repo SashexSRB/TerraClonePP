@@ -1,5 +1,5 @@
 #include "VlkRenderer.h"
-#include "Subsystems/VlkValidatorSubsys.h"
+#include "Subsystems/VlkValSubsys.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "Lib/stb_truetype.h"
@@ -23,6 +23,10 @@
 
 VlkRenderer::VlkRenderer() {
     // Connect the subsystems
+    texSubsys.r = this;
+    meshSubsys.r = this;
+    drawSubsys.r = this;
+    valSubsys.r = this;
 }
 
 void VlkRenderer::createInstance() {

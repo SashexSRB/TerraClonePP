@@ -8,6 +8,11 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "Subsystems/VlkDrawSubsys.h"
+#include "Subsystems/VlkMeshSubsys.h"
+#include "Subsystems/VlkTexSubsys.h"
+#include "Subsystems/VlkValSubsys.h"
+
 /**
  * Core Vulkan rendering backend.
  *
@@ -22,6 +27,15 @@
 class VlkRenderer {
 public:
     VlkRenderer();
+
+    // =========================================================================
+    // Subsystems
+    // =========================================================================
+
+    VlkTexSubsys texSubsys;
+    VlkMeshSubsys meshSubsys;
+    VlkDrawSubsys drawSubsys;
+    VlkValSubsys valSubsys;
 
     // =========================================================================
     // Constants

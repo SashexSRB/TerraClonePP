@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Engine/VlkRenderer.h"
-#include "Engine/Subsystems/VlkValidatorSubsys.h"
+#include "Engine/Subsystems/VlkValSubsys.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-class VlkValidatorSubsys;
+class VlkValSubsys;
 class Game;
 
 /**
@@ -55,7 +55,7 @@ private:
 
     GLFWwindow *window;
     VlkRenderer vlkRenderer;
-    VlkValidatorSubsys vlkValidator;
+    VlkValSubsys vlkValidator;
 
     /**
      * @brief Pointer to the game instance.
