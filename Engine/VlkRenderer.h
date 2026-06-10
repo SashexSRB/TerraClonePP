@@ -417,6 +417,7 @@ public:
      * @param name Mesh identifier (e.g. "player", "ui", "sky")
      * @param vertices New vertex data
      */
+    // @TODO: Move to VlkMeshSubsys
     void updateVertexBuffer(
         const std::string& name,
         const std::vector<Vertex>& vertices
@@ -428,6 +429,7 @@ public:
      * @param name Mesh identifier
      * @param indices New index data
      */
+    // @TODO: Move to VlkMeshSubsys
     void updateIndexBuffer(
         const std::string& name,
         const std::vector<uint32_t>& indices
@@ -436,6 +438,7 @@ public:
     /**
      * Deletes a mesh and frees GPU memory.
      */
+    // @TODO: Move to VlkMeshSubsys
     void destroyMesh(
         const std::string& name
     );
@@ -443,19 +446,23 @@ public:
     /**
      * Sets active chunk mesh keys for world rendering.
      */
+    // @TODO: Move to VlkMeshSubsys
     void setChunkKeys(const std::vector<int64_t>& keys);
 
     // Overloads
+    // @TODO: Move to VlkMeshSubsys
     void updateVertexBuffer(
         int64_t key,
         const std::vector<Vertex> &vertices
     );
 
+    // @TODO: Move to VlkMeshSubsys
     void updateIndexBuffer(
         int64_t key,
         const std::vector<uint32_t> &indices
     );
 
+    // @TODO: Move to VlkMeshSubsys
     void destroyMesh(
         int64_t key
     );
@@ -467,6 +474,7 @@ public:
     /**
      * Renders a named mesh.
      */
+    // @TODO: Move to VlkDrawSubsys
     void draw(
         const std::string& name,
         VkCommandBuffer commandBuffer
@@ -476,6 +484,7 @@ public:
     /**
     * Renders a chunk mesh.
     */
+    // @TODO: Move to VlkDrawSubsys
     void draw(
         int64_t key,
         VkCommandBuffer commandBuffer
@@ -484,6 +493,7 @@ public:
     /**
      * Renders a UI mesh (screen-space).
      */
+    // @TODO: Move to VlkDrawSubsys
     void drawUI(
         const std::string& name,
         VkCommandBuffer commandBuffer
@@ -492,6 +502,7 @@ public:
     /**
      * Renders text buffer using SDF font system.
      */
+    // @TODO: Move to VlkDrawSubsys
     void drawText(
         VkCommandBuffer commandBuffer
     );
@@ -499,6 +510,7 @@ public:
     /**
      * Renders sky background layer.
      */
+    // @TODO: Move to VlkDrawSubsys
     void drawSky(
         VkCommandBuffer commandBuffer
     );
@@ -506,6 +518,7 @@ public:
     /**
      * Renders item sprites
      */
+    // @TODO: Move to VlkDrawSubsys
     void drawSprite(
         const std::string& name,
         VkCommandBuffer commandBuffer
@@ -521,6 +534,7 @@ public:
      * @param fontPath Path to .ttf font file
      * @param fontSize Pixel size of generated font
      */
+    // @TODO: Move to VlkTexSubsys
     void createFontTexture(
         const std::string& fontPath,
         int fontSize
@@ -531,6 +545,7 @@ public:
      *
      * @param calls List of text draw commands
      */
+    // @TODO: Move to VlkTexSubsys
     void buildTextMesh(
         const std::vector<TextDrawCall>& calls
     );
@@ -538,6 +553,7 @@ public:
     /**
      * Sets text draw queue for next frame.
      */
+    // @TODO: Move to VlkTexSubsys
     void setTextDrawCalls(
         const std::vector<TextDrawCall>& calls
     );
@@ -549,6 +565,7 @@ public:
     /**
      * Loads sky texture used for background rendering.
      */
+    // @TODO: Move to VlkTexSubsys
     void createSkyTexture(const std::string& path);
 
     /**
@@ -557,6 +574,7 @@ public:
      * @param cam Camera used for parallax calculation
      * @param parallaxFactor Movement scaling factor
      */
+    // @TODO: Move to VlkTexSubsys
     void updateSkyMesh(
         const CameraParams& cam,
         float parallaxFactor = 0.1f
@@ -569,6 +587,7 @@ public:
     /**
      * Creates GPU texture used for dynamic lighting.
      */
+    // @TODO: Move to VlkTexSubsys
     void createLightmapTexture(
         int width,
         int height
@@ -581,6 +600,7 @@ public:
      * @param width Texture width
      * @param height Texture height
      */
+    // @TODO: Move to VlkTexSubsys
     void updateLightmap(
         const uint8_t* pixels,
         int width,
@@ -590,6 +610,7 @@ public:
     /**
      * Destroys lightmap GPU resources.
      */
+    // @TODO: Move to VlkTexSubsys
     void destroyLightmap();
 
     // =========================================================================
@@ -603,6 +624,7 @@ public:
      * @param width Texture width
      * @param height Texture height
      */
+    // @TODO: Move to VlkTexSubsys
     void createSpriteAtlas(
         const std::vector<uint8_t>& pixels,
         int width,
@@ -612,11 +634,13 @@ public:
     /**
      * Destroys sprite atlas GPU resources
      */
+    // @TODO: Move to VlkTexSubsys
     void destroySpriteAtlas();
 
     /**
      * Helper to update sprite atlas descriptors
      */
+    // @TODO: Move to VlkTexSubsys
     void updateSpriteAtlasDescriptors();
 
     // =========================================================================
@@ -833,16 +857,19 @@ private:
     // Sampler creating helper
     // =========================================================================
 
+    // @TODO: Maybe move to VlkTexSubsys?
     VkSampler makeSampler(
         const VkSamplerCreateInfo& info
     );
 
+    // @TODO: Maybe move to VlkTexSubsys?
     VkSamplerCreateInfo defaultSamplerInfo();
 
     // =========================================================================
     // Frame rendering helper
     // =========================================================================
 
+    // @TODO: Move to VlkDrawSubsys
     void bindPipeline(
         VkCommandBuffer cmd,
         VkPipeline pipeline,
@@ -854,10 +881,12 @@ private:
     // Texture creation helper
     // =========================================================================
 
+    // @TODO: Move to VlkTexSubsys
     TextureInfo loadTextureImage(
         const std::string& path
     );
 
+    // @TODO: Move to VlkTexSubsys
     void uploadTexture(
         const void* pixels,
         VkDeviceSize imageSize,
@@ -871,12 +900,14 @@ private:
     // Mesh management helpers
     // =========================================================================
 
+    // @TODO: Move to VlkMeshSubsys
     template<typename Key>
     MeshBuffer& getMeshBuffer(
         std::unordered_map<Key, MeshBuffer>& map,
         const Key& key
     );
 
+    // @TODO: Move to VlkMeshSubsys
     template<typename T>
     void uploadToGpuBuffer(
         VkBuffer& buffer,
@@ -885,6 +916,7 @@ private:
         VkBufferUsageFlags useFlags
     );
 
+    // @TODO: Move to VlkMeshSubsys
     template<typename Key>
     void destroyMeshImpl(
         std::unordered_map<Key, MeshBuffer>& map,
@@ -895,13 +927,16 @@ private:
     // Drawing helpers
     // =========================================================================
 
+    // @TODO: Move to VlkDrawSubsys
     UIPushConstants makeOrthoPush();
 
+    // @TODO: Move to VlkDrawSubsys
     void drawMesh(
         const MeshBuffer& mesh,
         VkCommandBuffer commandBuffer
     );
 
+    // @TODO: Move to VlkDrawSubsys
     void drawWithPush(
         const std::string& name,
         VkCommandBuffer commandBuffer,
