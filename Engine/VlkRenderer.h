@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vertex.h"
+#include "../Include/Vertex.h"
 #include "Include/CameraParams.h"
 
 #include <chrono>

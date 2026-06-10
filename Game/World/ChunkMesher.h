@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include "Vertex.h"
+#include "../../Include/Vertex.h"
 #include <vector>
 #include <cstdint>
 #include "Rendering/MeshUtils.h"
