@@ -1418,7 +1418,7 @@ void VlkRenderer::createSpriteAtlas(const std::vector<uint8_t> &pixels, int widt
     createImage(
         static_cast<uint32_t>(width),
         static_cast<uint32_t>(height),
-        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_R8G8B8A8_SRGB,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
@@ -1427,14 +1427,14 @@ void VlkRenderer::createSpriteAtlas(const std::vector<uint8_t> &pixels, int widt
 
     uploadTexture(
         pixels.data(), imageSize,
-        spriteImage, VK_FORMAT_R8G8B8A8_UNORM,
+        spriteImage, VK_FORMAT_R8G8B8A8_SRGB,
         static_cast<uint32_t>(width),
         static_cast<uint32_t>(height)
     );
 
     spriteImageView = createImageView(
         spriteImage,
-        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_R8G8B8A8_SRGB,
         VK_IMAGE_ASPECT_COLOR_BIT
     );
 
