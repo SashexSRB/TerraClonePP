@@ -84,4 +84,4 @@ public:
 /**
  * Global validator instance used by the application.
  */
-extern VlkValSubsys validator;
+//extern VlkValSubsys validator;

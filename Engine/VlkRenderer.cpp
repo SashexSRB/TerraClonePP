@@ -30,7 +30,7 @@ VlkRenderer::VlkRenderer() {
 }
 
 void VlkRenderer::createInstance() {
-    if (validator.enableValidationLayers && !validator.checkValidationLayerSupport())
+    if (valSubsys.enableValidationLayers && !valSubsys.checkValidationLayerSupport())
         throw std::runtime_error("Validation layers requested, but not available");
 
     VkApplicationInfo appInfo{};
@@ -50,11 +50,11 @@ void VlkRenderer::createInstance() {
     createInfo.ppEnabledExtensionNames = extensions.data();
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-    if (validator.enableValidationLayers) {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(validator.validationLayers.size());
-        createInfo.ppEnabledLayerNames = validator.validationLayers.data();
+    if (valSubsys.enableValidationLayers) {
+        createInfo.enabledLayerCount = static_cast<uint32_t>(valSubsys.validationLayers.size());
+        createInfo.ppEnabledLayerNames = valSubsys.validationLayers.data();
 
-        validator.populateDebugMesengerCreateInfo(debugCreateInfo);
+        valSubsys.populateDebugMesengerCreateInfo(debugCreateInfo);
         createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *) &debugCreateInfo;
     } else {
         createInfo.enabledLayerCount = 0;
@@ -120,9 +120,9 @@ void VlkRenderer::createLogicalDevice() {
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-    if (validator.enableValidationLayers) {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(validator.validationLayers.size());
-        createInfo.ppEnabledLayerNames = validator.validationLayers.data();
+    if (valSubsys.enableValidationLayers) {
+        createInfo.enabledLayerCount = static_cast<uint32_t>(valSubsys.validationLayers.size());
+        createInfo.ppEnabledLayerNames = valSubsys.validationLayers.data();
     } else {
         createInfo.enabledLayerCount = 0;
     }
@@ -1926,7 +1926,7 @@ std::vector<const char *> VlkRenderer::getRequiredExtensions() {
 
     std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-    if (validator.enableValidationLayers)
+    if (valSubsys.enableValidationLayers)
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     return extensions;

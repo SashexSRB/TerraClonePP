@@ -239,6 +239,11 @@ public:
     void createInstance();
 
     /**
+     * Set up the Vulkan Validator.
+     */
+    void initValidator() { valSubsys.setupDebugMessenger(instance); }
+
+    /**
      * Creates window surface for presentation.
      *
      * @param window GLFW window used for rendering target
