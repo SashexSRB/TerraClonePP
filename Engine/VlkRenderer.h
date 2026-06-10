@@ -1,8 +1,6 @@
 #pragma once
 
 #include "VlkRendererTypes.h"
-#include "Include/Vertex.h"
-#include "Include/CameraParams.h"
 
 #include <chrono>
 #include <optional>

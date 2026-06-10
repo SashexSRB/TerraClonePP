@@ -97,3 +97,6 @@ struct SwapChainSupportDetails {
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
+
+#include "Include/CameraParams.h"
+#include "Include/Vertex.h"
