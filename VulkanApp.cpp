@@ -43,7 +43,7 @@ void VulkanApp::initWindow() {
 
 void VulkanApp::initVulkan() {
     vlkRenderer.createInstance();
-    validator.setupDebugMessenger(vlkRenderer.instance);
+    vlkValidator.setupDebugMessenger(vlkRenderer.instance);
     vlkRenderer.createSurface(window);
     vlkRenderer.pickPhysicalDevice();
     vlkRenderer.createLogicalDevice();

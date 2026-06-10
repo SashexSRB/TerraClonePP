@@ -9,7 +9,7 @@
  * Responsible for enabling validation layers and managing
  * the Vulkan debug messenger used for runtime error reporting.
  */
-class VlkValidator {
+class VlkValidatorSubsys {
 public:
 
 #ifdef NDEBUG
@@ -81,4 +81,4 @@ public:
 /**
  * Global validator instance used by the application.
  */
-extern VlkValidator validator;
+extern VlkValidatorSubsys validator;

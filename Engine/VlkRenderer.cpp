@@ -1,5 +1,5 @@
 #include "VlkRenderer.h"
-#include "VlkValidator.h"
+#include "Subsystems/VlkValidatorSubsys.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "Lib/stb_truetype.h"

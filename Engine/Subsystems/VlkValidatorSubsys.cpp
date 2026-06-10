@@ -1,11 +1,11 @@
-#include "VlkValidator.h"
+#include "VlkValidatorSubsys.h"
 #include <vulkan/vulkan_core.h>
 #include <cstring>
 #include <iostream>
 
-VlkValidator validator;
+VlkValidatorSubsys validator;
 
-bool VlkValidator::checkValidationLayerSupport() {
+bool VlkValidatorSubsys::checkValidationLayerSupport() {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -28,7 +28,7 @@ bool VlkValidator::checkValidationLayerSupport() {
     return true;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL VlkValidator::debugCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL VlkValidatorSubsys::debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
@@ -37,7 +37,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VlkValidator::debugCallback(
     return VK_FALSE;
 }
 
-void VlkValidator::populateDebugMesengerCreateInfo(
+void VlkValidatorSubsys::populateDebugMesengerCreateInfo(
     VkDebugUtilsMessengerCreateInfoEXT &createInfo) {
     createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -51,7 +51,7 @@ void VlkValidator::populateDebugMesengerCreateInfo(
     createInfo.pUserData = nullptr;
 }
 
-VkResult VlkValidator::CreateDebugUtilsMessengerEXT(
+VkResult VlkValidatorSubsys::CreateDebugUtilsMessengerEXT(
     VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
     const VkAllocationCallbacks *pAllocator,
     VkDebugUtilsMessengerEXT *pDebugMessenger) {
@@ -64,7 +64,7 @@ VkResult VlkValidator::CreateDebugUtilsMessengerEXT(
     }
 }
 
-void VlkValidator::setupDebugMessenger(VkInstance instance) {
+void VlkValidatorSubsys::setupDebugMessenger(VkInstance instance) {
     if (!enableValidationLayers)
         return;
 
@@ -75,7 +75,7 @@ void VlkValidator::setupDebugMessenger(VkInstance instance) {
         throw std::runtime_error("Failed to set up debug messenger!");
 }
 
-void VlkValidator::DestroyDebugUtilsMessengerEXT(
+void VlkValidatorSubsys::DestroyDebugUtilsMessengerEXT(
     VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
     const VkAllocationCallbacks *pAllocator) {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
