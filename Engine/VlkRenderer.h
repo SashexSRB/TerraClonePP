@@ -56,6 +56,10 @@ public:
     VkSampler&     lightmapSampler        = texSubsys.lightmapSampler;
     glm::vec2&     lastLightmapOrigin     = texSubsys.lastLightmapOrigin;
     glm::vec2&     lastLightmapSize       = texSubsys.lastLightmapSize;
+    VkImage        spriteImage            = texSubsys.spriteImage;
+    VmaAllocation  spriteAllocation       = texSubsys.spriteAllocation;
+    VkImageView    spriteImageView        = texSubsys.spriteImageView;
+    VkSampler      spriteSampler          = texSubsys.spriteSampler;
 
     // =========================================================================
     // Constants
@@ -78,15 +82,6 @@ public:
     uint32_t indexCount;
 
     CameraParams lastCam;
-
-    // =========================================================================
-    // Font / UI State
-    // =========================================================================
-
-    glm::vec2 skyUVOffset = {0, 0};
-
-    float skyUVScaleX = 1.0f;
-    float skyUVScaleY = 1.0f;
 
     // =========================================================================
     // Core Vulkan Objects
@@ -172,14 +167,6 @@ public:
     VmaAllocation depthImageAllocation;
     VkImageView depthImageView;
 
-    // =========================================================================
-    // Sprite Atlas Resources
-    // =========================================================================
-
-    VkImage spriteImage = VK_NULL_HANDLE;
-    VmaAllocation spriteAllocation = VK_NULL_HANDLE;
-    VkImageView spriteImageView = VK_NULL_HANDLE;
-    VkSampler spriteSampler = VK_NULL_HANDLE;
 
     // =========================================================================
     // VMA Allocator
@@ -404,251 +391,6 @@ public:
     void cleanupSwapChain();
 
     // =========================================================================
-    // Mesh Subsystem Stubs
-    // =========================================================================
-
-    /**
-     * Updates vertex buffer for a named mesh.
-     *
-     * Replaces GPU data for an existing mesh.
-     *
-     * @param name Mesh identifier (e.g. "player", "ui", "sky")
-     * @param vertices New vertex data
-     */
-    void updateVertexBuffer(
-        const std::string& name,
-        const std::vector<Vertex>& vertices
-    ) { meshSubsys.updateVertexBuffer(name, vertices); }
-
-    /**
-     * Updates vertex buffer for a mesh based on a numerical key (Chunks)
-     *
-     * Replaces GPU data for an existing chunk
-     *
-     * @param key Mesh identifier
-     * @param vertices New vertex data
-     */
-    void updateVertexBuffer(
-        int64_t key,
-        const std::vector<Vertex> &vertices
-    ) { meshSubsys.updateVertexBuffer(key, vertices); }
-
-    /**
-     * Updates index buffer for a named mesh.
-     *
-     * @param name Mesh identifier
-     * @param indices New index data
-     */
-    void updateIndexBuffer(
-        const std::string& name,
-        const std::vector<uint32_t>& indices
-    ) { meshSubsys.updateIndexBuffer(name, indices); }
-
-    /**
-     * Updates index buffer for a mesh based on a numerical key (Chunks)
-     *
-     * @param key Mesh identifier
-     * @param indices New index data
-     */
-    void updateIndexBuffer(
-        int64_t key,
-        const std::vector<uint32_t> &indices
-    ) { meshSubsys.updateIndexBuffer(key, indices); }
-
-    /**
-     * Deletes a mesh and frees GPU memory.
-     *
-     * @param name Mesh identifier
-     */
-    void destroyMesh(
-        const std::string& name
-    ) { meshSubsys.destroyMesh(name); }
-
-    /**
-     * Deletes a mesh and frees GPU memory.
-     *
-     * @param key Mesh identifier
-     */
-    void destroyMesh(
-        int64_t key
-    ) { meshSubsys.destroyMesh(key); }
-
-    /**
-     * Sets active chunk mesh keys for world rendering.
-     */
-    void setChunkKeys(
-        const std::vector<int64_t>& keys
-    ) { meshSubsys.setChunkKeys(keys); }
-
-    // =========================================================================
-    // Drawing
-    // =========================================================================
-
-    /**
-     * Renders a named mesh.
-     */
-    // @TODO: Move to VlkDrawSubsys
-    void draw(
-        const std::string& name,
-        VkCommandBuffer commandBuffer
-    );
-
-    // Overload
-    /**
-    * Renders a chunk mesh.
-    */
-    // @TODO: Move to VlkDrawSubsys
-    void draw(
-        int64_t key,
-        VkCommandBuffer commandBuffer
-    );
-
-    /**
-     * Renders a UI mesh (screen-space).
-     */
-    // @TODO: Move to VlkDrawSubsys
-    void drawUI(
-        const std::string& name,
-        VkCommandBuffer commandBuffer
-    );
-
-    /**
-     * Renders text buffer using SDF font system.
-     */
-    // @TODO: Move to VlkDrawSubsys
-    void drawText(
-        VkCommandBuffer commandBuffer
-    );
-
-    /**
-     * Renders sky background layer.
-     */
-    // @TODO: Move to VlkDrawSubsys
-    void drawSky(
-        VkCommandBuffer commandBuffer
-    );
-
-    /**
-     * Renders item sprites
-     */
-    // @TODO: Move to VlkDrawSubsys
-    void drawSprite(
-        const std::string& name,
-        VkCommandBuffer commandBuffer
-    );
-
-    // =========================================================================
-    // Text / Font
-    // =========================================================================
-
-    /**
-     * Creates SDF font atlas from font file.
-     *
-     * @param fontPath Path to .ttf font file
-     * @param fontSize Pixel size of generated font
-     */
-    void createFontTexture(
-        const std::string& fontPath,
-        int fontSize
-    ) {texSubsys.createFontTexture(fontPath, fontSize);}
-
-
-    /**
-     * Builds mesh for text rendering.
-     *
-     * @param calls List of text draw commands
-     */
-    void buildTextMesh(
-        const std::vector<TextDrawCall>& calls
-    ) {texSubsys.buildTextMesh(calls);}
-
-    /**
-     * Sets text draw queue for next frame.
-     */
-    void setTextDrawCalls(
-        const std::vector<TextDrawCall>& calls
-    ) {texSubsys.setTextDrawCalls(calls);}
-
-    // =========================================================================
-    // Sky
-    // =========================================================================
-
-    /**
-     * Loads sky texture used for background rendering.
-     */
-    void createSkyTexture(
-        const std::string& path
-    ) {texSubsys.createSkyTexture(path);}
-
-    /**
-     * Updates sky rendering offset based on camera movement.
-     *
-     * @param cam Camera used for parallax calculation
-     * @param parallaxFactor Movement scaling factor
-     */
-    void updateSkyMesh(
-        const CameraParams& cam,
-        float parallaxFactor = 0.1f
-    ) {texSubsys.updateSkyMesh(cam, parallaxFactor);}
-
-    // =========================================================================
-    // Lightmap
-    // =========================================================================
-
-    /**
-     * Creates GPU texture used for dynamic lighting.
-     */
-    void createLightmapTexture(
-        int width,
-        int height
-    ) {texSubsys.createLightmapTexture(width, height);}
-
-    /**
-     * Uploads new lightmap data to GPU.
-     *
-     * @param pixels Raw lightmap pixel data (RGBA or grayscale)
-     * @param width Texture width
-     * @param height Texture height
-     */
-    void updateLightmap(
-        const uint8_t* pixels,
-        int width,
-        int height
-    ) {texSubsys.updateLightmap(pixels, width, height);}
-
-    /**
-     * Destroys lightmap GPU resources.
-     */
-    void destroyLightmap() {texSubsys.destroyLightmap();};
-
-    // =========================================================================
-    // Sprite Atlas
-    // =========================================================================
-
-    /**
-     * Creates GPU texture atlas for the sprites
-     *
-     * @param pixels Raw texture pixel data
-     * @param width Texture width
-     * @param height Texture height
-     */
-    void createSpriteAtlas(
-        const std::vector<uint8_t>& pixels,
-        int width,
-        int height
-    ) {texSubsys.createSpriteAtlas(pixels, width, height);}
-
-    /**
-     * Destroys sprite atlas GPU resources
-     */
-    void destroySpriteAtlas() {texSubsys.destroySpriteAtlas();};
-
-    /**
-     * Helper to update sprite atlas descriptors
-     */
-    void updateSpriteAtlasDescriptors() {texSubsys.updateSpriteAtlasDescriptors();};
-
-    // =========================================================================
     // Buffers / Images / Memory
     // =========================================================================
 
@@ -846,46 +588,240 @@ public:
 
     void cleanupMeshes();
 
+    // =========================================================================
+    // Subsystem connections
+    // =========================================================================
+
+    // Meshing
+
+    /**
+     * Updates vertex buffer for a named mesh.
+     *
+     * Replaces GPU data for an existing mesh.
+     *
+     * @param name Mesh identifier (e.g. "player", "ui", "sky")
+     * @param vertices New vertex data
+     */
+    void updateVertexBuffer(
+        const std::string& name,
+        const std::vector<Vertex>& vertices
+    ) { meshSubsys.updateVertexBuffer(name, vertices); }
+
+    /**
+     * Updates vertex buffer for a mesh based on a numerical key (Chunks)
+     *
+     * Replaces GPU data for an existing chunk
+     *
+     * @param key Mesh identifier
+     * @param vertices New vertex data
+     */
+    void updateVertexBuffer(
+        int64_t key,
+        const std::vector<Vertex> &vertices
+    ) { meshSubsys.updateVertexBuffer(key, vertices); }
+
+    /**
+     * Updates index buffer for a named mesh.
+     *
+     * @param name Mesh identifier
+     * @param indices New index data
+     */
+    void updateIndexBuffer(
+        const std::string& name,
+        const std::vector<uint32_t>& indices
+    ) { meshSubsys.updateIndexBuffer(name, indices); }
+
+    /**
+     * Updates index buffer for a mesh based on a numerical key (Chunks)
+     *
+     * @param key Mesh identifier
+     * @param indices New index data
+     */
+    void updateIndexBuffer(
+        int64_t key,
+        const std::vector<uint32_t> &indices
+    ) { meshSubsys.updateIndexBuffer(key, indices); }
+
+    /**
+     * Deletes a mesh and frees GPU memory.
+     *
+     * @param name Mesh identifier
+     */
+    void destroyMesh(
+        const std::string& name
+    ) { meshSubsys.destroyMesh(name); }
+
+    /**
+     * Deletes a mesh and frees GPU memory.
+     *
+     * @param key Mesh identifier
+     */
+    void destroyMesh(
+        int64_t key
+    ) { meshSubsys.destroyMesh(key); }
+
+    /**
+     * Sets active chunk mesh keys for world rendering.
+     */
+    void setChunkKeys(
+        const std::vector<int64_t>& keys
+    ) { meshSubsys.setChunkKeys(keys); }
+
+    // Drawing
+
+    /**
+     * Renders a named mesh.
+     */
+    void draw(
+        const std::string& name,
+        VkCommandBuffer commandBuffer
+    ) {drawSubsys.draw(name, commandBuffer);}
+
+    // Overload
+    /**
+    * Renders a chunk mesh.
+    */
+    void draw(
+        int64_t key,
+        VkCommandBuffer commandBuffer
+    ) {drawSubsys.draw(key, commandBuffer);}
+
+    /**
+     * Renders a UI mesh (screen-space).
+     */
+    void drawUI(
+        const std::string& name,
+        VkCommandBuffer commandBuffer
+    ) {drawSubsys.drawUI(name, commandBuffer);}
+
+    /**
+     * Renders text buffer using SDF font system.
+     */
+    void drawText(
+        VkCommandBuffer commandBuffer
+    ) {drawSubsys.drawText(commandBuffer);}
+
+    /**
+     * Renders sky background layer.
+     */
+    void drawSky(
+        VkCommandBuffer commandBuffer
+    ) {drawSubsys.drawSky(commandBuffer);}
+
+    /**
+     * Renders item sprites
+     */
+    void drawSprite(
+        const std::string& name,
+        VkCommandBuffer commandBuffer
+    ) {drawSubsys.drawSprite(name, commandBuffer);}
+
+    // Texturing
+
+    /**
+     * Creates SDF font atlas from font file.
+     *
+     * @param fontPath Path to .ttf font file
+     * @param fontSize Pixel size of generated font
+     */
+    void createFontTexture(
+        const std::string& fontPath,
+        int fontSize
+    ) {texSubsys.createFontTexture(fontPath, fontSize);}
+
+    /**
+     * Builds mesh for text rendering.
+     *
+     * @param calls List of text draw commands
+     */
+    void buildTextMesh(
+        const std::vector<TextDrawCall>& calls
+    ) {texSubsys.buildTextMesh(calls);}
+
+    /**
+     * Sets text draw queue for next frame.
+     */
+    void setTextDrawCalls(
+        const std::vector<TextDrawCall>& calls
+    ) {texSubsys.setTextDrawCalls(calls);}
+
+    /**
+     * Loads sky texture used for background rendering.
+     */
+    void createSkyTexture(
+        const std::string& path
+    ) {texSubsys.createSkyTexture(path);}
+
+    /**
+     * Updates sky rendering offset based on camera movement.
+     *
+     * @param cam Camera used for parallax calculation
+     * @param parallaxFactor Movement scaling factor
+     */
+    void updateSkyMesh(
+        const CameraParams& cam,
+        float parallaxFactor = 0.1f
+    ) {texSubsys.updateSkyMesh(cam, parallaxFactor);}
+
+    /**
+     * Creates GPU texture used for dynamic lighting.
+     */
+    void createLightmapTexture(
+        int width,
+        int height
+    ) {texSubsys.createLightmapTexture(width, height);}
+
+    /**
+     * Uploads new lightmap data to GPU.
+     *
+     * @param pixels Raw lightmap pixel data (RGBA or grayscale)
+     * @param width Texture width
+     * @param height Texture height
+     */
+    void updateLightmap(
+        const uint8_t* pixels,
+        int width,
+        int height
+    ) {texSubsys.updateLightmap(pixels, width, height);}
+
+    /**
+     * Destroys lightmap GPU resources.
+     */
+    void destroyLightmap() {texSubsys.destroyLightmap();};
+
+    /**
+     * Creates GPU texture atlas for the sprites
+     *
+     * @param pixels Raw texture pixel data
+     * @param width Texture width
+     * @param height Texture height
+     */
+    void createSpriteAtlas(
+        const std::vector<uint8_t>& pixels,
+        int width,
+        int height
+    ) {texSubsys.createSpriteAtlas(pixels, width, height);}
+
+    /**
+     * Destroys sprite atlas GPU resources
+     */
+    void destroySpriteAtlas() {texSubsys.destroySpriteAtlas();};
+
+    /**
+     * Helper to update sprite atlas descriptors
+     */
+    void updateSpriteAtlasDescriptors() {texSubsys.updateSpriteAtlasDescriptors();};
+
 private:
 
     // =========================================================================
-    // Internal State
+    // Pipeline binding helper
     // =========================================================================
 
-    std::vector<TextDrawCall> textDrawCalls;
-
-    SDFFont sdfFont;
-
-    // =========================================================================
-    // Frame rendering helper
-    // =========================================================================
-
-    // @TODO: Move to VlkDrawSubsys
     void bindPipeline(
         VkCommandBuffer cmd,
         VkPipeline pipeline,
         const VkViewport &viewport,
         const VkRect2D &scissor
     );
-
-    // =========================================================================
-    // Drawing helpers
-    // =========================================================================
-
-    // @TODO: Move to VlkDrawSubsys
-    UIPushConstants makeOrthoPush();
-
-    // @TODO: Move to VlkDrawSubsys
-    void drawMesh(
-        const MeshBuffer& mesh,
-        VkCommandBuffer commandBuffer
-    );
-
-    // @TODO: Move to VlkDrawSubsys
-    void drawWithPush(
-        const std::string& name,
-        VkCommandBuffer commandBuffer,
-        const UIPushConstants& push
-    );
-
 };

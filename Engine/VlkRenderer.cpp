@@ -1001,45 +1001,6 @@ void VlkRenderer::cleanupSwapChain() {
 }
 
 // =========================================================================
-// Drawing
-// =========================================================================
-
-void VlkRenderer::draw(const std::string &name, VkCommandBuffer commandBuffer) {
-    auto it = meshSubsys.meshes.find(name);
-    if (it != meshSubsys.meshes.end()) drawMesh(it->second, commandBuffer);
-}
-
-// Overload
-void VlkRenderer::draw(int64_t key, VkCommandBuffer commandBuffer) {
-    auto it = meshSubsys.chunkMeshes.find(key);
-    if (it != meshSubsys.chunkMeshes.end()) drawMesh(it->second, commandBuffer);
-}
-
-void VlkRenderer::drawUI(const std::string &name, VkCommandBuffer commandBuffer) {
-    drawWithPush(name, commandBuffer, makeOrthoPush());
-}
-
-void VlkRenderer::drawText(VkCommandBuffer commandBuffer) {
-    auto push = makeOrthoPush();
-    push.useFont = 1;
-    drawWithPush("__text__", commandBuffer, push);
-}
-
-void VlkRenderer::drawSky(VkCommandBuffer commandBuffer) {
-    auto push = makeOrthoPush();
-    push.useSky = 1;
-    push.skyUVOffset = skyUVOffset;
-    push.skyUVScale = {skyUVScaleX, skyUVScaleY};
-    drawWithPush("__sky__", commandBuffer, push);
-}
-
-void VlkRenderer::drawSprite(const std::string &name, VkCommandBuffer commandBuffer) {
-    auto push = makeOrthoPush();
-    push.useSprite = 1;
-    drawWithPush(name, commandBuffer, push);
-}
-
-// =========================================================================
 // Buffers / Images / Memory
 // =========================================================================
 
@@ -1534,55 +1495,5 @@ void VlkRenderer::bindPipeline(VkCommandBuffer cmd, VkPipeline pipeline, const V
         pipelineLayout, 0, 1,
         &descriptorSets[currentFrame],
         0, nullptr
-    );
-}
-
-// =========================================================================
-// Drawing helpers
-// =========================================================================
-
-UIPushConstants VlkRenderer::makeOrthoPush() {
-    UIPushConstants push{};
-    push.useUIProj = 1;
-    push.proj = glm::mat4(1.0f);
-    push.proj[0][0] = 2.0f / swapChainExtent.width;
-    push.proj[1][1] = 2.0f / swapChainExtent.height;
-    push.proj[3][0] = -1.0f;
-    push.proj[3][1] = -1.0f;
-    return push;
-}
-
-void VlkRenderer::drawMesh(const MeshBuffer &mesh, VkCommandBuffer commandBuffer) {
-    if (mesh.indexCount == 0) return;
-    VkBuffer vertexBuffers[] = {mesh.vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(commandBuffer, mesh.indexCount, 1, 0, 0, 0);
-}
-
-void VlkRenderer::drawWithPush(const std::string &name, VkCommandBuffer commandBuffer, const UIPushConstants &push) {
-    auto it = meshSubsys.meshes.find(name);
-    if (it == meshSubsys.meshes.end() || it->second.indexCount == 0) return;
-
-    vkCmdPushConstants(
-        commandBuffer,
-        pipelineLayout,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        0,
-        sizeof(UIPushConstants),
-        &push
-    );
-
-    drawMesh(it->second, commandBuffer);
-
-    const UIPushConstants reset{};
-    vkCmdPushConstants(
-        commandBuffer,
-        pipelineLayout,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        0,
-        sizeof(UIPushConstants),
-        &reset
     );
 }
