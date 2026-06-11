@@ -73,6 +73,10 @@ struct GameItem {
  */
 class Registry {
 public:
+    static constexpr int MAX_ITEM_ID = 2048;
+    static std::array<GameItem, MAX_ITEM_ID> itemTable;
+    static std::unordered_map<uint32_t, GameItem> items;
+
     /**
      * Initializes the item database.
      * Must be called before any `get()` usage.
@@ -93,9 +97,4 @@ public:
      * Checks whether an item ID exists in the registry.
      */
     static bool isValid(uint32_t id);
-
-    /**
-     * Global item storage database.
-     */
-    static std::unordered_map<uint32_t, GameItem> items;
 };

@@ -1,8 +1,10 @@
 #include "Item.h"
 #include <stdexcept>
 #include <iostream>
+#include <array>
 
 std::unordered_map<uint32_t, GameItem> Registry::items;
+std::array<GameItem, Registry::MAX_ITEM_ID> Registry::itemTable;
 
 void Registry::initialize() {
 // ── Tiles ────────────────────────────────────────────────────────────
@@ -23,17 +25,22 @@ void Registry::initialize() {
     items[1001] = {1001, "Copper Axe",     ItemType::Tool,   ToolType::Axe,     1, 2, ASSET_PATH "Assets/Sprites/copper_axe.png",     false, 0.0f, TileBreakType::None, 0, 0.0f, 35, 1.0f, 0,  1};
     items[1002] = {1002, "Copper Sword",   ItemType::Weapon, ToolType::None,    2, 2, ASSET_PATH "Assets/Sprites/copper_sword.png",   false, 0.0f, TileBreakType::None, 0, 0.0f, 0,  1.0f, 15, 1};
 
+    itemTable.fill(GameItem{});
+    for (auto& [id, item] : items) {
+        if (id < MAX_ITEM_ID)
+            itemTable[id] = item;
+    }
+
     std::cout << "[ItemReg] Initialized with " << items.size() << " items.\n";
 }
 
 const GameItem& Registry::get(uint32_t id) {
-    auto it = items.find(id);
-    if (it == items.end()) {
-        throw std::runtime_error("[ItemReg] Unknown item id: "  + std::to_string(id));
-    }
-    return it->second;
+    if (id < MAX_ITEM_ID) return itemTable[id];
+
+    return items.at(id);
 }
 
 bool Registry::isValid(uint32_t id) {
+    if (id < MAX_ITEM_ID) return itemTable[id].id != 0 || id == 0;
     return items.count(id) > 0;
 }
