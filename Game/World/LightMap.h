@@ -5,6 +5,13 @@
 #include <algorithm>
 
 struct LightMap {
+    struct RGB { float r, g, b; };
+
+    struct Cell {
+        int16_t lx, ly;
+        float   r, g, b;
+    };
+
     // =================================================================
     // Tuning constants
     // =================================================================
@@ -55,6 +62,7 @@ struct LightMap {
     );
 
 private:
-    std::vector<float> buf; // RGB floats interleaved during BFS
-    inline int idx(int lx, int ly) const { return ly * width + lx; }
+    std::vector<RGB>     buf;
+    std::vector<uint8_t> solid;
+    std::vector<Cell>    bfsQueue;
 };

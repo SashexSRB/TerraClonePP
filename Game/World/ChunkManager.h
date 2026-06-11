@@ -67,6 +67,8 @@ public:
      */
     static std::string meshKey(int cx, int cy);
 
+    std::vector<int64_t> lastRemovedKeys;
+
 private:
     World&     world;
     int        chunkSize;

@@ -1,6 +1,7 @@
 #include "ChunkManager.h"
 #include "World.h"
 #include <chrono>
+#include <unordered_set>
 
 ChunkManager::ChunkManager(World& world, int chunkSize) : world(world), chunkSize(chunkSize) {}
 
@@ -32,40 +33,54 @@ bool ChunkManager::update(int playerX, int playerY, int loadRadiusChunks) {
     if (pc == lastPlayerChunk) return false;
     lastPlayerChunk = pc;
 
-    std::unordered_map<int64_t, Chunk> newLoaded;
-    bool changed = false;
     int w = world.getWidth(), h = world.getHeight();
+    bool changed = false;
 
+    // Build set of keys that should be loaded
+    std::unordered_set<int64_t> wanted;
     for (int dx = -loadRadiusChunks; dx <= loadRadiusChunks; ++dx) {
         for (int dy = -loadRadiusChunks; dy <= loadRadiusChunks; ++dy) {
             int cx = pc.x + dx;
             int cy = pc.y + dy;
-
-            if (cx < 0 || cy < 0 || cx * chunkSize >= w || cy * chunkSize >= h) continue;
-
-            int64_t key = chunkKey(cx, cy);
-            if (loadedChunks.count(key)) {
-                newLoaded[key] = std::move(loadedChunks[key]);
-            } else {
-                changed = true;
-                Chunk c(cx, cy, chunkSize);
-                for (int tx = 0; tx < chunkSize; ++tx) {
-                    for (int ty = 0; ty < chunkSize; ++ty) {
-                        int wx = cx * chunkSize + tx;
-                        int wy = cy * chunkSize + ty;
-
-                        if (wx >= w || wy >= h) continue;
-                        c.tiles[tx + ty * chunkSize] = world.getTile(wx, wy);
-                    }
-                }
-                newLoaded[key] = std::move(c);
-            }
+            if (cx < 0 || cy < 0 ||
+                cx * chunkSize >= w || cy * chunkSize >= h) continue;
+            wanted.insert(chunkKey(cx, cy));
         }
     }
 
-    if (newLoaded.size() != loadedChunks.size()) changed = true;
+    // Unload chunks no longer wanted
+    lastRemovedKeys.clear();
+    for (auto it = loadedChunks.begin(); it != loadedChunks.end(); ) {
+        if (!wanted.count(it->first)) {
+            lastRemovedKeys.push_back(it->first);
+            it = loadedChunks.erase(it);
+            changed = true;
+        } else {
+            ++it;
+        }
+    }
 
-    loadedChunks = std::move(newLoaded);
+    // Load only new chunks
+    for (int64_t key : wanted) {
+        if (loadedChunks.count(key)) continue;
+
+        // Decode cx/cy from key
+        int cx = static_cast<int>(key >> 32);
+        int cy = static_cast<int>(key & 0xFFFFFFFF);
+
+        Chunk c(cx, cy, chunkSize);
+        for (int tx = 0; tx < chunkSize; ++tx) {
+            for (int ty = 0; ty < chunkSize; ++ty) {
+                int wx = cx * chunkSize + tx;
+                int wy = cy * chunkSize + ty;
+                if (wx >= w || wy >= h) continue;
+                c.tiles[tx + ty * chunkSize] = world.getTile(wx, wy);
+            }
+        }
+        loadedChunks[key] = std::move(c);
+        changed = true;
+    }
+
     return changed;
 }
 

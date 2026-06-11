@@ -431,19 +431,8 @@ void Game::updateBuffers(const CameraParams &cam) {
 
         // Clean up GPU buffers for chunks that are no longer loaded
         if (chunksChanged) {
-            std::unordered_set<int64_t> validKeys;
-            for (auto &kv : world.chunks.getChunks()) {
-                validKeys.insert(kv.first);
-            }
-
-            std::vector<int64_t> toRemove;
-            for (auto &kv : renderer.chunkMeshes) {
-                if (!validKeys.count(kv.first)) toRemove.push_back(kv.first);
-            }
-
-            for (auto &key : toRemove) {
+            for (int64_t key : world.chunks.lastRemovedKeys)
                 renderer.destroyMesh(key);
-            }
         }
 
         // Queue dirty chunks for off-thread meshing
