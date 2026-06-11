@@ -73,8 +73,7 @@ public:
     // Mesh Storage
     // =========================================================================
 
-    std::unordered_map<std::string, MeshBuffer> meshes;       // player, inventory, sky, text
-    std::unordered_map<int64_t, MeshBuffer> chunkMeshes;      // chunks only
+
 
     // =========================================================================
     // Core Vulkan Objects
@@ -425,7 +424,7 @@ public:
     void cleanupSwapChain();
 
     // =========================================================================
-    // Mesh Management
+    // Mesh Subsystem Stubs
     // =========================================================================
 
     /**
@@ -436,11 +435,23 @@ public:
      * @param name Mesh identifier (e.g. "player", "ui", "sky")
      * @param vertices New vertex data
      */
-    // @TODO: Move to VlkMeshSubsys
     void updateVertexBuffer(
         const std::string& name,
         const std::vector<Vertex>& vertices
-    );
+    ) { meshSubsys.updateVertexBuffer(name, vertices); }
+
+    /**
+     * Updates vertex buffer for a mesh based on a numerical key (Chunks)
+     *
+     * Replaces GPU data for an existing chunk
+     *
+     * @param key Mesh identifier
+     * @param vertices New vertex data
+     */
+    void updateVertexBuffer(
+        int64_t key,
+        const std::vector<Vertex> &vertices
+    ) { meshSubsys.updateVertexBuffer(key, vertices); }
 
     /**
      * Updates index buffer for a named mesh.
@@ -448,43 +459,46 @@ public:
      * @param name Mesh identifier
      * @param indices New index data
      */
-    // @TODO: Move to VlkMeshSubsys
     void updateIndexBuffer(
         const std::string& name,
         const std::vector<uint32_t>& indices
-    );
+    ) { meshSubsys.updateIndexBuffer(name, indices); }
+
+    /**
+     * Updates index buffer for a mesh based on a numerical key (Chunks)
+     *
+     * @param key Mesh identifier
+     * @param indices New index data
+     */
+    void updateIndexBuffer(
+        int64_t key,
+        const std::vector<uint32_t> &indices
+    ) { meshSubsys.updateIndexBuffer(key, indices); }
 
     /**
      * Deletes a mesh and frees GPU memory.
+     *
+     * @param name Mesh identifier
      */
-    // @TODO: Move to VlkMeshSubsys
     void destroyMesh(
         const std::string& name
-    );
+    ) { meshSubsys.destroyMesh(name); }
+
+    /**
+     * Deletes a mesh and frees GPU memory.
+     *
+     * @param key Mesh identifier
+     */
+    void destroyMesh(
+        int64_t key
+    ) { meshSubsys.destroyMesh(key); }
 
     /**
      * Sets active chunk mesh keys for world rendering.
      */
-    // @TODO: Move to VlkMeshSubsys
-    void setChunkKeys(const std::vector<int64_t>& keys);
-
-    // Overloads
-    // @TODO: Move to VlkMeshSubsys
-    void updateVertexBuffer(
-        int64_t key,
-        const std::vector<Vertex> &vertices
-    );
-
-    // @TODO: Move to VlkMeshSubsys
-    void updateIndexBuffer(
-        int64_t key,
-        const std::vector<uint32_t> &indices
-    );
-
-    // @TODO: Move to VlkMeshSubsys
-    void destroyMesh(
-        int64_t key
-    );
+    void setChunkKeys(
+        const std::vector<int64_t>& keys
+    ) { meshSubsys.setChunkKeys(keys); }
 
     // =========================================================================
     // Drawing
@@ -866,7 +880,6 @@ private:
     // Internal State
     // =========================================================================
 
-    std::vector<int64_t> chunkKeys;
 
     std::vector<TextDrawCall> textDrawCalls;
 
@@ -913,33 +926,6 @@ private:
         VkFormat format,
         uint32_t width,
         uint32_t height
-    );
-
-    // =========================================================================
-    // Mesh management helpers
-    // =========================================================================
-
-    // @TODO: Move to VlkMeshSubsys
-    template<typename Key>
-    MeshBuffer& getMeshBuffer(
-        std::unordered_map<Key, MeshBuffer>& map,
-        const Key& key
-    );
-
-    // @TODO: Move to VlkMeshSubsys
-    template<typename T>
-    void uploadToGpuBuffer(
-        VkBuffer& buffer,
-        VmaAllocation& allocation,
-        const std::vector<T>& data,
-        VkBufferUsageFlags useFlags
-    );
-
-    // @TODO: Move to VlkMeshSubsys
-    template<typename Key>
-    void destroyMeshImpl(
-        std::unordered_map<Key, MeshBuffer>& map,
-        const Key& key
     );
 
     // =========================================================================

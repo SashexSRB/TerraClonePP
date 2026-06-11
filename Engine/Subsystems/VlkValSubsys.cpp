@@ -3,8 +3,6 @@
 #include <cstring>
 #include <iostream>
 
-VlkValSubsys validator;
-
 bool VlkValSubsys::checkValidationLayerSupport() {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);

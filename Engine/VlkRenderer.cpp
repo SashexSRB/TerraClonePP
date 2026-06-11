@@ -918,7 +918,7 @@ void VlkRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
             0, sizeof(UIPushConstants), &worldPush
         );
 
-        for (const auto& key : chunkKeys) draw(key, commandBuffer);
+        for (const auto& key : meshSubsys.chunkKeys) draw(key, commandBuffer);
     }
 
     {
@@ -1000,83 +1000,18 @@ void VlkRenderer::cleanupSwapChain() {
 }
 
 // =========================================================================
-// Mesh Management
-// =========================================================================
-
-void VlkRenderer::updateVertexBuffer(const std::string &name, const std::vector<Vertex> &vertices) {
-    auto& mesh = meshes[name];
-
-    uploadToGpuBuffer(
-        mesh.vertexBuffer,
-        mesh.vertexAllocation,
-        vertices,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-    );
-
-}
-
-void VlkRenderer::updateVertexBuffer(int64_t key, const std::vector<Vertex> &vertices) {
-    auto& mesh = chunkMeshes[key];
-
-    uploadToGpuBuffer(
-        mesh.vertexBuffer,
-        mesh.vertexAllocation,
-        vertices,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-    );
-}
-
-void VlkRenderer::updateIndexBuffer(const std::string &name, const std::vector<uint32_t> &indices) {
-    auto& mesh = meshes[name];
-
-    uploadToGpuBuffer(
-        mesh.indexBuffer,
-        mesh.indexAllocation,
-        indices,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-    );
-
-    mesh.indexCount = indices.size();
-}
-
-void VlkRenderer::updateIndexBuffer(int64_t key, const std::vector<uint32_t> &indices) {
-    auto& mesh = chunkMeshes[key];
-
-    uploadToGpuBuffer(
-        mesh.indexBuffer,
-        mesh.indexAllocation,
-        indices,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-    );
-
-    mesh.indexCount = indices.size();
-}
-
-void VlkRenderer::destroyMesh(const std::string &name) {
-    destroyMeshImpl(meshes, name);
-}
-
-void VlkRenderer::destroyMesh(int64_t key) {
-    destroyMeshImpl(chunkMeshes, key);
-}
-
-void VlkRenderer::setChunkKeys(const std::vector<int64_t>& keys) {
-    chunkKeys = keys;
-}
-
-// =========================================================================
 // Drawing
 // =========================================================================
 
 void VlkRenderer::draw(const std::string &name, VkCommandBuffer commandBuffer) {
-    auto it = meshes.find(name);
-    if (it != meshes.end()) drawMesh(it->second, commandBuffer);
+    auto it = meshSubsys.meshes.find(name);
+    if (it != meshSubsys.meshes.end()) drawMesh(it->second, commandBuffer);
 }
 
 // Overload
 void VlkRenderer::draw(int64_t key, VkCommandBuffer commandBuffer) {
-    auto it = chunkMeshes.find(key);
-    if (it != chunkMeshes.end()) drawMesh(it->second, commandBuffer);
+    auto it = meshSubsys.chunkMeshes.find(key);
+    if (it != meshSubsys.chunkMeshes.end()) drawMesh(it->second, commandBuffer);
 }
 
 void VlkRenderer::drawUI(const std::string &name, VkCommandBuffer commandBuffer) {
@@ -1265,7 +1200,7 @@ void VlkRenderer::updateSkyMesh(const CameraParams &cam, float parallaxFactor) {
     float h = static_cast<float>(swapChainExtent.height);
 
     // Only create the static quad once
-    if (meshes.find("__sky__") == meshes.end()) {
+    if (meshSubsys.meshes.find("__sky__") == meshSubsys.meshes.end()) {
         std::vector<Vertex> verts = {
             {{0, 0}, 0.99f, {1,1,1}, {0, 0}},
             {{w, 0}, 0.99f, {1,1,1}, {1, 0}},
@@ -1953,21 +1888,21 @@ std::vector<char> VlkRenderer::readFile(const std::string &filename) {
 // =========================================================================
 
 void VlkRenderer::cleanupMeshes() {
-    for (auto& [key, mesh] : meshes) {
+    for (auto& [key, mesh] : meshSubsys.meshes) {
         if (mesh.vertexBuffer != VK_NULL_HANDLE)
             vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
         if (mesh.indexBuffer != VK_NULL_HANDLE)
             vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
     }
-    meshes.clear();
+    meshSubsys.meshes.clear();
 
-    for (auto& [key, mesh] : chunkMeshes) {
+    for (auto& [key, mesh] : meshSubsys.chunkMeshes) {
         if (mesh.vertexBuffer != VK_NULL_HANDLE)
             vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
         if (mesh.indexBuffer != VK_NULL_HANDLE)
             vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
     }
-    chunkMeshes.clear();
+    meshSubsys.chunkMeshes.clear();
 }
 
 // #########################################################################
@@ -2090,48 +2025,6 @@ void VlkRenderer::uploadTexture(const void* pixels, VkDeviceSize imageSize, VkIm
 }
 
 // =========================================================================
-// Mesh management helpers
-// =========================================================================
-
-template<typename Key>
-MeshBuffer& VlkRenderer::getMeshBuffer(std::unordered_map<Key, MeshBuffer>& map, const Key& key) {
-    return map[key];
-}
-
-template<typename T>
-void VlkRenderer::uploadToGpuBuffer(VkBuffer& buffer, VmaAllocation& allocation, const std::vector<T>& data, VkBufferUsageFlags useFlags) {
-    VkDeviceSize bufferSize = sizeof(T) * data.size();
-    if (buffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, buffer, allocation);
-
-    ensureStagingBuffer(stagingOffset + bufferSize);
-    memcpy(static_cast<char*>(stagingMapped) + stagingOffset, data.data(), bufferSize);
-
-    createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | useFlags,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        buffer, allocation
-    );
-
-    copyBuffer(stagingBuffer, buffer, bufferSize, stagingOffset);
-    stagingOffset += bufferSize;
-}
-
-template<typename Key>
-void VlkRenderer::destroyMeshImpl(std::unordered_map<Key, MeshBuffer>& map, const Key& key) {
-    auto it = map.find(key);
-    if (it == map.end()) return;
-
-    MeshBuffer& mesh = it->second;
-    if (mesh.vertexBuffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, mesh.vertexBuffer, mesh.vertexAllocation);
-    if (mesh.indexBuffer != VK_NULL_HANDLE)
-        vmaDestroyBuffer(vmaAllocator, mesh.indexBuffer, mesh.indexAllocation);
-    map.erase(it);
-}
-
-// =========================================================================
 // Drawing helpers
 // =========================================================================
 
@@ -2156,8 +2049,8 @@ void VlkRenderer::drawMesh(const MeshBuffer &mesh, VkCommandBuffer commandBuffer
 }
 
 void VlkRenderer::drawWithPush(const std::string &name, VkCommandBuffer commandBuffer, const UIPushConstants &push) {
-    auto it = meshes.find(name);
-    if (it == meshes.end() || it->second.indexCount == 0) return;
+    auto it = meshSubsys.meshes.find(name);
+    if (it == meshSubsys.meshes.end() || it->second.indexCount == 0) return;
 
     vkCmdPushConstants(
         commandBuffer,
