@@ -169,24 +169,21 @@ void VlkTexSubsys::updateSkyMesh(const CameraParams &cam, float parallaxFactor) 
     float w = static_cast<float>(r->swapChainExtent.width);
     float h = static_cast<float>(r->swapChainExtent.height);
 
-    // Only create the static quad once
-    if (r->meshSubsys.meshes.find("__sky__") == r->meshSubsys.meshes.end()) {
-        std::vector<Vertex> verts = {
-            {{0, 0}, 0.99f, {1,1,1}, {0, 0}},
-            {{w, 0}, 0.99f, {1,1,1}, {1, 0}},
-            {{w, h}, 0.99f, {1,1,1}, {1, 1}},
-            {{0, h}, 0.99f, {1,1,1}, {0, 1}},
-        };
-        std::vector<uint32_t> idxs = {0, 1, 2, 2, 3, 0};
-        r->updateVertexBuffer("__sky__", verts);
-        r->updateIndexBuffer("__sky__", idxs);
-    }
+    std::vector<Vertex> verts = {
+        {{0, 0}, 0.99f, {1,1,1}, {0, 0}},
+        {{w, 0}, 0.99f, {1,1,1}, {1, 0}},
+        {{w, h}, 0.99f, {1,1,1}, {1, 1}},
+        {{0, h}, 0.99f, {1,1,1}, {0, 1}},
+    };
+    std::vector<uint32_t> idxs = {0, 1, 2, 2, 3, 0};
+    r->updateVertexBuffer("__sky__", verts);
+    r->updateIndexBuffer("__sky__", idxs);
 
     // Store parallax offset for use in drawSky
     skyUVOffset.x = fmod(cam.position.x * parallaxFactor / 1024.0f, 1.0f);
     skyUVOffset.y = 0.0f;
-    skyUVScaleX = static_cast<float>(r->swapChainExtent.width)  / 1024.0f;
-    skyUVScaleY = static_cast<float>(r->swapChainExtent.height) / 512.0f;
+    skyUVScaleX = w / 1024.0f;
+    skyUVScaleY = h / 512.0f;
 }
 
 // =========================================================================
