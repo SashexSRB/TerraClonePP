@@ -4,7 +4,7 @@
 #include "Items/Item.h"
 #include "VulkanApp.h"
 #include "World/ChunkMesher.h"
-#include "Engine/VlkRendererTypes.h"
+#include "Engine/VlkTypes.h"
 
 #include <iostream>
 #include <algorithm>

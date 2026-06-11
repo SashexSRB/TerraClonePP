@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VlkRendererTypes.h"
+#include "VlkTypes.h"
 
 #include <chrono>
 #include <optional>
