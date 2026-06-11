@@ -437,7 +437,7 @@ void Game::updateBuffers(const CameraParams &cam) {
             }
 
             std::vector<int64_t> toRemove;
-            for (auto &kv : renderer.meshSubsys.chunkMeshes) {
+            for (auto &kv : renderer.chunkMeshes) {
                 if (!validKeys.count(kv.first)) toRemove.push_back(kv.first);
             }
 

@@ -3,7 +3,6 @@
 #include "VlkTypes.h"
 
 #include <chrono>
-#include <optional>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -38,6 +37,27 @@ public:
     VlkValSubsys valSubsys;
 
     // =========================================================================
+    // Subsystem proxy members
+    // =========================================================================
+
+    std::unordered_map<int64_t, MeshBuffer>& chunkMeshes = meshSubsys.chunkMeshes;
+
+    VkImage&       fontImage              = texSubsys.fontImage;
+    VmaAllocation& fontImageAllocation    = texSubsys.fontImageAllocation;
+    VkImageView&   fontImageView          = texSubsys.fontImageView;
+    VkSampler&     fontSampler            = texSubsys.fontSampler;
+    VkImage&       skyImage               = texSubsys.skyImage;
+    VmaAllocation& skyImageAllocation     = texSubsys.skyImageAllocation;
+    VkImageView&   skyImageView           = texSubsys.skyImageView;
+    VkSampler&     skySampler             = texSubsys.skySampler;
+    VkImage&       lightmapImage          = texSubsys.lightmapImage;
+    VmaAllocation& lightmapAllocation     = texSubsys.lightmapAllocation;
+    VkImageView&   lightmapImageView      = texSubsys.lightmapImageView;
+    VkSampler&     lightmapSampler        = texSubsys.lightmapSampler;
+    glm::vec2&     lastLightmapOrigin     = texSubsys.lastLightmapOrigin;
+    glm::vec2&     lastLightmapSize       = texSubsys.lastLightmapSize;
+
+    // =========================================================================
     // Constants
     // =========================================================================
 
@@ -67,13 +87,6 @@ public:
 
     float skyUVScaleX = 1.0f;
     float skyUVScaleY = 1.0f;
-
-
-    // =========================================================================
-    // Mesh Storage
-    // =========================================================================
-
-
 
     // =========================================================================
     // Core Vulkan Objects
@@ -158,39 +171,6 @@ public:
     VkImage depthImage;
     VmaAllocation depthImageAllocation;
     VkImageView depthImageView;
-
-    // =========================================================================
-    // Font Resources
-    // =========================================================================
-
-    VkImage fontImage;
-    VmaAllocation fontImageAllocation;
-    VkImageView fontImageView;
-    VkSampler fontSampler;
-
-    // =========================================================================
-    // Sky Resources
-    // =========================================================================
-
-    VkImage skyImage = VK_NULL_HANDLE;
-    VmaAllocation skyImageAllocation = VK_NULL_HANDLE;
-    VkImageView skyImageView = VK_NULL_HANDLE;
-    VkSampler skySampler = VK_NULL_HANDLE;
-
-    // =========================================================================
-    // Lightmap resources
-    // =========================================================================
-
-    VkImage       lightmapImage = VK_NULL_HANDLE;
-    VmaAllocation lightmapAllocation = VK_NULL_HANDLE;
-    VkImageView   lightmapImageView = VK_NULL_HANDLE;
-    VkSampler     lightmapSampler = VK_NULL_HANDLE;
-
-    int lightmapTexWidth = 0;
-    int lightmapTexHeight = 0;
-
-    glm::vec2 lastLightmapOrigin = { 0.0f, 0.0f };
-    glm::vec2 lastLightmapSize = { 1.0f, 1.0f };
 
     // =========================================================================
     // Sprite Atlas Resources
@@ -567,29 +547,27 @@ public:
      * @param fontPath Path to .ttf font file
      * @param fontSize Pixel size of generated font
      */
-    // @TODO: Move to VlkTexSubsys
     void createFontTexture(
         const std::string& fontPath,
         int fontSize
-    );
+    ) {texSubsys.createFontTexture(fontPath, fontSize);}
+
 
     /**
      * Builds mesh for text rendering.
      *
      * @param calls List of text draw commands
      */
-    // @TODO: Move to VlkTexSubsys
     void buildTextMesh(
         const std::vector<TextDrawCall>& calls
-    );
+    ) {texSubsys.buildTextMesh(calls);}
 
     /**
      * Sets text draw queue for next frame.
      */
-    // @TODO: Move to VlkTexSubsys
     void setTextDrawCalls(
         const std::vector<TextDrawCall>& calls
-    );
+    ) {texSubsys.setTextDrawCalls(calls);}
 
     // =========================================================================
     // Sky
@@ -598,8 +576,9 @@ public:
     /**
      * Loads sky texture used for background rendering.
      */
-    // @TODO: Move to VlkTexSubsys
-    void createSkyTexture(const std::string& path);
+    void createSkyTexture(
+        const std::string& path
+    ) {texSubsys.createSkyTexture(path);}
 
     /**
      * Updates sky rendering offset based on camera movement.
@@ -607,11 +586,10 @@ public:
      * @param cam Camera used for parallax calculation
      * @param parallaxFactor Movement scaling factor
      */
-    // @TODO: Move to VlkTexSubsys
     void updateSkyMesh(
         const CameraParams& cam,
         float parallaxFactor = 0.1f
-    );
+    ) {texSubsys.updateSkyMesh(cam, parallaxFactor);}
 
     // =========================================================================
     // Lightmap
@@ -620,11 +598,10 @@ public:
     /**
      * Creates GPU texture used for dynamic lighting.
      */
-    // @TODO: Move to VlkTexSubsys
     void createLightmapTexture(
         int width,
         int height
-    );
+    ) {texSubsys.createLightmapTexture(width, height);}
 
     /**
      * Uploads new lightmap data to GPU.
@@ -633,18 +610,16 @@ public:
      * @param width Texture width
      * @param height Texture height
      */
-    // @TODO: Move to VlkTexSubsys
     void updateLightmap(
         const uint8_t* pixels,
         int width,
         int height
-    );
+    ) {texSubsys.updateLightmap(pixels, width, height);}
 
     /**
      * Destroys lightmap GPU resources.
      */
-    // @TODO: Move to VlkTexSubsys
-    void destroyLightmap();
+    void destroyLightmap() {texSubsys.destroyLightmap();};
 
     // =========================================================================
     // Sprite Atlas
@@ -657,24 +632,21 @@ public:
      * @param width Texture width
      * @param height Texture height
      */
-    // @TODO: Move to VlkTexSubsys
     void createSpriteAtlas(
         const std::vector<uint8_t>& pixels,
         int width,
         int height
-    );
+    ) {texSubsys.createSpriteAtlas(pixels, width, height);}
 
     /**
      * Destroys sprite atlas GPU resources
      */
-    // @TODO: Move to VlkTexSubsys
-    void destroySpriteAtlas();
+    void destroySpriteAtlas() {texSubsys.destroySpriteAtlas();};
 
     /**
      * Helper to update sprite atlas descriptors
      */
-    // @TODO: Move to VlkTexSubsys
-    void updateSpriteAtlasDescriptors();
+    void updateSpriteAtlasDescriptors() {texSubsys.updateSpriteAtlasDescriptors();};
 
     // =========================================================================
     // Buffers / Images / Memory
@@ -880,22 +852,9 @@ private:
     // Internal State
     // =========================================================================
 
-
     std::vector<TextDrawCall> textDrawCalls;
 
     SDFFont sdfFont;
-
-    // =========================================================================
-    // Sampler creating helper
-    // =========================================================================
-
-    // @TODO: Maybe move to VlkTexSubsys?
-    VkSampler makeSampler(
-        const VkSamplerCreateInfo& info
-    );
-
-    // @TODO: Maybe move to VlkTexSubsys?
-    VkSamplerCreateInfo defaultSamplerInfo();
 
     // =========================================================================
     // Frame rendering helper
@@ -907,25 +866,6 @@ private:
         VkPipeline pipeline,
         const VkViewport &viewport,
         const VkRect2D &scissor
-    );
-
-    // =========================================================================
-    // Texture creation helper
-    // =========================================================================
-
-    // @TODO: Move to VlkTexSubsys
-    TextureInfo loadTextureImage(
-        const std::string& path
-    );
-
-    // @TODO: Move to VlkTexSubsys
-    void uploadTexture(
-        const void* pixels,
-        VkDeviceSize imageSize,
-        VkImage image,
-        VkFormat format,
-        uint32_t width,
-        uint32_t height
     );
 
     // =========================================================================
