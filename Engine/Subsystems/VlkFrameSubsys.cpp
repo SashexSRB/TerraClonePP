@@ -146,7 +146,6 @@ void VlkFrameSubsys::createDescriptorSets() {
 
         std::array<VkWriteDescriptorSet, 6> writes = {w0, w1, w2, w3, w4, w5};
 
-        std::cout << "HERE\n";
         vkUpdateDescriptorSets(
             r->device,
             static_cast<uint32_t>(writes.size()),
