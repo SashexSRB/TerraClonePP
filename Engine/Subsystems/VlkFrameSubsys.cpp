@@ -121,16 +121,16 @@ void VlkFrameSubsys::createDescriptorSets() {
             return ii;
         };
 
-        auto tileInfo = imgInfo(r->textureImageView, r->textureSampler);
-        auto fontInfo = imgInfo(tex.fontImageView, tex.fontSampler);
-        auto skyInfo = imgInfo(tex.skyImageView, tex.skySampler);
-        auto lightInfo = imgInfo(tex.lightmapImageView, tex.lightmapSampler);
-        auto spriteInfo = imgInfo(tex.spriteImageView, tex.spriteSampler);
+        auto tileInfo   = imgInfo(r->textureImageView,   r->textureSampler);
+        auto fontInfo   = imgInfo(tex.fontImageView,     tex.fontSampler);
+        auto skyInfo    = imgInfo(tex.skyImageView,      tex.skySampler);
+        auto lightInfo  = imgInfo(tex.lightmapImageView, tex.lightmapSampler);
+        auto spriteInfo = imgInfo(tex.spriteImageView,   tex.spriteSampler);
 
         auto makeWrite = [&](uint32_t binding, VkDescriptorType type) {
             VkWriteDescriptorSet w{};
             w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            w.dstSet = descriptorSets[binding];
+            w.dstSet = descriptorSets[i];
             w.dstBinding = binding;
             w.descriptorType = type;
             w.descriptorCount = 1;
@@ -145,10 +145,13 @@ void VlkFrameSubsys::createDescriptorSets() {
         auto w5 = makeWrite(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER); w5.pImageInfo  = &spriteInfo;
 
         std::array<VkWriteDescriptorSet, 6> writes = {w0, w1, w2, w3, w4, w5};
+
+        std::cout << "HERE\n";
         vkUpdateDescriptorSets(
             r->device,
             static_cast<uint32_t>(writes.size()),
-            writes.data(), 0,
+            writes.data(),
+            0,
             nullptr
         );
     }
@@ -164,7 +167,7 @@ void VlkFrameSubsys::updateUniformBuffer(uint32_t currentImage, const CameraPara
     ubo->proj[0][0] = 2.0f / cam.visibleWidth;
     ubo->proj[1][1] = 2.0f / cam.visibleHeight;
     ubo->proj[3][0] = -1.0f;
-    ubo->proj[3][3] = -1.0f;
+    ubo->proj[3][1] = -1.0f;
 
     ubo->view = glm::translate(
         glm::mat4(1.0f),
@@ -197,29 +200,37 @@ void VlkFrameSubsys::bindPipeline(VkCommandBuffer cmd, VkPipeline pipeline, cons
 void VlkFrameSubsys::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = 0;
+    bi.pInheritanceInfo = nullptr;
     if (vkBeginCommandBuffer(commandBuffer, &bi) != VK_SUCCESS)
         throw std::runtime_error("Failed to begin command buffer!");
-
-    std::array<VkClearValue, 2> clear{};
-    clear[0].color = {{0.0f, 0.0f, 0.0f, 0.0f}};
-    clear[1].depthStencil = {1.0f, 0};
 
     VkRenderPassBeginInfo rpi{};
     rpi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rpi.renderPass = r->renderPass;
     rpi.framebuffer = r->swapChainFramebuffers[imageIndex];
+    rpi.renderArea.offset = { 0, 0 };
     rpi.renderArea.extent = r->swapChainExtent;
+
+    std::array<VkClearValue, 2> clear{};
+    clear[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clear[1].depthStencil = {1.0f, 0};
+
     rpi.clearValueCount = static_cast<uint32_t>(clear.size());
     rpi.pClearValues = clear.data();
 
     vkCmdBeginRenderPass(commandBuffer, &rpi, VK_SUBPASS_CONTENTS_INLINE);
 
     VkViewport vp{};
+    vp.x = 0.0f;
+    vp.y = 0.0f;
     vp.width = static_cast<float>(r->swapChainExtent.width);
     vp.height = static_cast<float>(r->swapChainExtent.height);
+    vp.minDepth = 0.0f;
     vp.maxDepth = 1.0f;
 
     VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
     scissor.extent = r->swapChainExtent;
 
     // Sky
@@ -243,7 +254,7 @@ void VlkFrameSubsys::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
             &wp
         );
 
-        for (int64_t key : r->meshSubsys.chunkKeys)
+        for (const auto& key : r->meshSubsys.chunkKeys)
             r->draw(key, commandBuffer);
     }
 
@@ -314,16 +325,17 @@ void VlkFrameSubsys::drawFrame(GLFWwindow *window, bool &framebufferResized, con
     recordCommandBuffer(commandBuffers[r->currentFrame], imageIndex);
 
     VkSemaphore waitSems[] = {imageAvailableSemaphores[r->currentFrame]};
-    VkSemaphore signalSems[] = {renderFinishedSemaphores[r->currentFrame]};
-    VkPipelineStageFlags wst = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkPipelineStageFlags wst[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.waitSemaphoreCount = 1;
     si.pWaitSemaphores = waitSems;
-    si.pWaitDstStageMask = &wst;
+    si.pWaitDstStageMask = wst;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &commandBuffers[r->currentFrame];
+
+    VkSemaphore signalSems[] = {renderFinishedSemaphores[r->currentFrame]};
     si.signalSemaphoreCount = 1;
     si.pSignalSemaphores = signalSems;
 
@@ -334,11 +346,15 @@ void VlkFrameSubsys::drawFrame(GLFWwindow *window, bool &framebufferResized, con
     pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     pi.waitSemaphoreCount = 1;
     pi.pWaitSemaphores = signalSems;
+
+    VkSwapchainKHR swapChains[] = {r->swapChain};
     pi.swapchainCount = 1;
-    pi.pSwapchains = &r->swapChain;
+    pi.pSwapchains = swapChains;
     pi.pImageIndices = &imageIndex;
 
-    result = vkQueuePresentKHR(r->graphicsQueue, &pi);
+    pi.pResults = nullptr;
+
+    result = vkQueuePresentKHR(r->presentQueue, &pi);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
         framebufferResized = false;

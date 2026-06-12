@@ -11,6 +11,7 @@
 #include "Subsystems/VlkMeshSubsys.h"
 #include "Subsystems/VlkTexSubsys.h"
 #include "Subsystems/VlkValSubsys.h"
+#include "Subsystems/VlkFrameSubsys.h"
 
 /**
  * Core Vulkan rendering backend.
@@ -35,6 +36,7 @@ public:
     VlkMeshSubsys meshSubsys;
     VlkDrawSubsys drawSubsys;
     VlkValSubsys valSubsys;
+    VlkFrameSubsys frameSubsys;
 
     // =========================================================================
     // Subsystem proxy members
@@ -60,6 +62,15 @@ public:
     VmaAllocation  spriteAllocation       = texSubsys.spriteAllocation;
     VkImageView    spriteImageView        = texSubsys.spriteImageView;
     VkSampler      spriteSampler          = texSubsys.spriteSampler;
+
+    std::vector<VkSemaphore>& imageAvailableSemaphores = frameSubsys.imageAvailableSemaphores;
+    std::vector<VkSemaphore>& renderFinishedSemaphores = frameSubsys.renderFinishedSemaphores;
+    std::vector<VkFence>&     inFlightFences           = frameSubsys.inFlightFences;
+    VkCommandPool&            commandPool              = frameSubsys.commandPool;
+    VkDescriptorPool&         descriptorPool           = frameSubsys.descriptorPool;
+    std::vector<VkDescriptorSet>& descriptorSets       = frameSubsys.descriptorSets;
+    std::vector<VkBuffer>&        uniformBuffers       = frameSubsys.uniformBuffers;
+    std::vector<VmaAllocation>&   uniformAllocations   = frameSubsys.uniformAllocations;
 
     // =========================================================================
     // Constants
@@ -125,30 +136,6 @@ public:
 
     VkPipeline graphicsPipeline;
     VkPipeline uiPipeline;
-
-    // =========================================================================
-    // Commands & Synchronization
-    // =========================================================================
-
-    VkCommandPool commandPool;
-
-    std::vector<VkCommandBuffer> commandBuffers;
-
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
-
-    std::vector<VkFence> inFlightFences;
-
-    // =========================================================================
-    // Uniforms & Descriptors
-    // =========================================================================
-
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VmaAllocation> uniformAllocations;
-    std::vector<void*> uniformBuffersMapped;
-
-    VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
 
     // =========================================================================
     // Main Texture Resources
@@ -273,11 +260,6 @@ public:
     void createFramebuffers();
 
     /**
-    * Creates command pool used for rendering command buffers.
-    */
-    void createCommandPool();
-
-    /**
      * Creates transfer system resources for batched GPU uploads.
      */
     void createTransferResources();
@@ -306,75 +288,9 @@ public:
      */
     void createSampler();
 
-    /**
-     * Allocates per-frame uniform buffers.
-     */
-    void createUniformBuffers();
-
-    /**
-     * Creates descriptor pool for GPU resource binding.
-     */
-    void createDescriptorPool();
-
-    /**
-     * Allocates descriptor sets for shader access.
-     */
-    void createDescriptorSets();
-
-    /**
-     * Allocates command buffers for rendering.
-     */
-    void createCommandBuffers();
-
-    /**
-     * Creates synchronization primitives (fences + semaphores).
-     */
-    void createSyncObjects();
-
     // =========================================================================
     // Frame Rendering
     // =========================================================================
-
-    /**
-     * Executes a full frame render.
-     *
-     * Handles:
-     * - swapchain acquisition
-     * - command buffer execution
-     * - rendering world + UI
-     * - presentation
-     *
-     * @param window GLFW window (used for surface / resize handling)
-     * @param framebufferResized Flag set when swapchain must be recreated
-     * @param cam Camera state used for view/projection matrices
-     */
-    void drawFrame(
-        GLFWwindow* window,
-        bool& framebufferResized,
-        const CameraParams& cam
-    );
-
-    /**
-     * Records rendering commands for a single swapchain image.
-     *
-     * @param commandBuffer Active command buffer for this frame
-     * @param imageIndex Swapchain image index being rendered to
-     */
-    void recordCommandBuffer(
-        VkCommandBuffer commandBuffer,
-        uint32_t imageIndex
-    );
-
-    /**
-     * Updates per-frame uniform buffer data.
-     *
-     * @param currentImage Frame index in flight
-     * @param cam Camera used to compute view/projection matrices
-     */
-    void updateUniformBuffer(
-        uint32_t currentImage,
-        const CameraParams& cam
-    );
 
     /**
      * Recreates swapchain and all dependent GPU resources.
@@ -812,16 +728,65 @@ public:
      */
     void updateSpriteAtlasDescriptors() {texSubsys.updateSpriteAtlasDescriptors();};
 
-private:
+    // Framing
 
-    // =========================================================================
-    // Pipeline binding helper
-    // =========================================================================
+    /**
+    * Creates command pool used for rendering command buffers.
+    */
+    void createCommandPool() {frameSubsys.createCommandPool();}
 
-    void bindPipeline(
-        VkCommandBuffer cmd,
-        VkPipeline pipeline,
-        const VkViewport &viewport,
-        const VkRect2D &scissor
-    );
+    /**
+     * Allocates command buffers for rendering.
+     */
+    void createCommandBuffers() {frameSubsys.createCommandBuffers();}
+
+    /**
+     * Creates synchronization primitives (fences + semaphores).
+     */
+    void createSyncObjects() {frameSubsys.createSyncObjects();}
+
+    /**
+     * Allocates per-frame uniform buffers.
+     */
+    void createUniformBuffers() {frameSubsys.createUniformBuffers();}
+
+    /**
+     * Creates descriptor pool for GPU resource binding.
+     */
+    void createDescriptorPool() {frameSubsys.createDescriptorPool();}
+
+    /**
+     * Allocates descriptor sets for shader access.
+     */
+    void createDescriptorSets() {frameSubsys.createDescriptorSets();}
+
+    /**
+     * Executes a full frame render.
+     *
+     * Handles:
+     * - swapchain acquisition
+     * - command buffer execution
+     * - rendering world + UI
+     * - presentation
+     *
+     * @param window GLFW window (used for surface / resize handling)
+     * @param framebufferResized Flag set when swapchain must be recreated
+     * @param cam Camera state used for view/projection matrices
+     */
+    void drawFrame(
+        GLFWwindow* window,
+        bool& framebufferResized,
+        const CameraParams& cam
+    ) {frameSubsys.drawFrame(window, framebufferResized, cam);}
+
+    /**
+     * Updates per-frame uniform buffer data.
+     *
+     * @param currentImage Frame index in flight
+     * @param cam Camera used to compute view/projection matrices
+     */
+    void updateUniformBuffer(
+        uint32_t currentImage,
+        const CameraParams& cam
+    ) {frameSubsys.updateUniformBuffer(currentImage, cam);}
 };
